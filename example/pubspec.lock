@@ -63,9 +63,9 @@ packages:
   method_call_dispatcher:
     dependency: transitive
     description:
-      name: method_call_dispatcher
-      url: "https://pub.dartlang.org"
-    source: hosted
+      path: "../../method_call_dispatcher"
+      relative: true
+    source: path
     version: "0.2.1"
   path:
     dependency: transitive

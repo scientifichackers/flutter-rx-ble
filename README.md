@@ -1,6 +1,8 @@
 # rx_ble
 
-A Flutter BLE plugin, based on Polidea&#x27;s RxAndroidBle and RxBluetoothKit
+A Flutter BLE plugin, based on Polidea's RxAndroidBle and RxBluetoothKit
+
+Batteries included.
 
 ## Getting Started
 
