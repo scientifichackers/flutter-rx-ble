@@ -53,6 +53,13 @@ packages:
       url: "https://pub.dartlang.org"
     source: hosted
     version: "1.1.6"
+  method_call_dispatcher:
+    dependency: "direct main"
+    description:
+      name: method_call_dispatcher
+      url: "https://pub.dartlang.org"
+    source: hosted
+    version: "0.2.1"
   path:
     dependency: transitive
     description:

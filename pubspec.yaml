@@ -1,8 +1,8 @@
 name: rx_ble
 description: A Flutter BLE plugin, based on Polidea&#x27;s RxAndroidBle and RxBluetoothKit
 version: 0.0.1
-author:
-homepage:
+author: Dev Aggarwal <devpxy@gmail.com>
+homepage: https://github.com/pycampers/flutter_pdf_viewer
 
 environment:
   sdk: ">=2.1.0 <3.0.0"
@@ -10,6 +10,8 @@ environment:
 dependencies:
   flutter:
     sdk: flutter
+
+  method_call_dispatcher: ^0.2.1
 
 dev_dependencies:
   flutter_test:
