@@ -1,4 +1,5 @@
 import 'dart:async';
+import 'dart:convert';
 import 'dart:typed_data';
 
 import 'package:flutter/services.dart';
@@ -7,7 +8,6 @@ import 'package:rx_ble/src/models.dart';
 
 export 'package:rx_ble/src/exceptions.dart';
 export 'package:rx_ble/src/models.dart';
-export 'package:rx_ble/src/scan_settings.dart';
 
 /// A callback that allows showing a small message to user
 /// explaining the need for the location permission.
@@ -84,9 +84,19 @@ class RxBle {
   ///
   /// Scanning can be stopped by either cancelling the [StreamSubscription],
   /// or by calling [stopScan].
-  static Stream<ScanResult> startScan() {
-    return scanChannel.receiveBroadcastStream().map((event) {
+  static Stream<ScanResult> startScan({
+    ScanModes scanMode: ScanModes.lowPower,
+    String name,
+    String macAddress,
+  }) {
+    return scanChannel.receiveBroadcastStream({
+      "scanMode": scanMode.index,
+      "macAddress": macAddress,
+      "name": name,
+    }).map((event) {
       return ScanResult.fromJson(event);
+    }).handleError((e) {
+      rethrowException(e);
     });
   }
 
@@ -101,16 +111,19 @@ class RxBle {
         .values[await RxBle.invokeMethod("getConnectionState", macAddress)];
   }
 
-  /// Establish connection the this BLE device,
+  /// Establish connection to the BLE device identified by [macAddress]
   /// and emit the [BleConnectionState] changes.
+  ///
   ///
   /// In cases when the BLE device is _not_ available at the time of calling this function,
   /// enabling [waitForDevice] will make the framework wait for device to start advertising.
+  ///
   ///
   /// [BleConnectionState] is just a convenience value for
   /// easy monitoring that may be useful in the UI.
   /// It is not meant to be a trigger for reconnecting to a
   /// particular device. For that, use the [BleException]s.
+  ///
   ///
   /// Throws the following errors:
   ///   - [BleDisconnectedException]
@@ -119,8 +132,22 @@ class RxBle {
   ///
   /// Device can be disconnected by either cancelling the [StreamSubscription],
   /// or by calling [disconnect].
-  static Stream<BleConnectionState> connect(String macAddress,
-      {bool waitForDevice: true}) {
+  ///
+  ///
+  /// It is mandatory that you perform a scan before issuing a connect request.
+  /// In cases where the caller hasn't done a scan,
+  /// and is loading the [macAddress] from say, local storage, the connect will fail.
+  /// This can usually be solved using some simple dart [Stream] methods :-
+  ///
+  /// ```dart
+  /// final scanResult = await RxBle.startScan(macAddress: "XX:XX:XX:XX:XX:XX")
+  ///   .timeout(Duration(seconds: 5))
+  ///   .first;
+  /// ```
+  static Stream<BleConnectionState> connect(
+    String macAddress, {
+    bool waitForDevice: true,
+  }) {
     return RxBle.connectChannel.receiveBroadcastStream({
       "macAddress": macAddress,
       "waitForDevice": waitForDevice,
@@ -160,7 +187,7 @@ class RxBle {
     String uuid,
     Uint8List value,
   ) async {
-    return await RxBle.invokeMethod("readChar", {
+    return await RxBle.invokeMethod("writeChar", {
       "macAddress": macAddress,
       "uuid": uuid,
       "value": value,
@@ -175,9 +202,15 @@ class RxBle {
   ///   - [BleGattCannotStartException]
   ///   - [BleGattException]
   static Future<int> requestMtu(String macAddress, int value) async {
-    return await RxBle.invokeMethod("readChar", {
+    return await RxBle.invokeMethod("requestMtu", {
       "macAddress": macAddress,
       "value": value,
     });
+  }
+
+  /// Converts characteristic value returned by [readChar] into utf-8 [String],
+  /// By removing zeros (null value) and trimming leading and trailing whitespace.
+  static String charToString(Uint8List value) {
+    return utf8.decode(value.where((it) => it != 0).toList()).trim();
   }
 }

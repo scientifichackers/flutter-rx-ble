@@ -67,18 +67,17 @@ class _MyAppState extends State<MyApp> {
   final uuidControl = TextEditingController(
     text: "0000ee09-0000-1000-8000-00805f9b34fb",
   );
-  final mtuControl = TextEditingController(
-    text: "0000ee09-0000-1000-8000-00805f9b34fb",
-  );
-  final writeCharValueControl = TextEditingController(
-    text: "0000ee09-0000-1000-8000-00805f9b34fb",
-  );
+  final mtuControl = TextEditingController();
+  final writeCharValueControl = TextEditingController();
   String macAddress;
   var connectionState = BleConnectionState.disconnected;
 
   Function wrapCall(Function fn) {
     return () async {
       var value;
+      setState(() {
+        returnError = returnValue = null;
+      });
       try {
         value = await fn();
       } catch (e, trace) {
@@ -144,99 +143,170 @@ class _MyAppState extends State<MyApp> {
 
   @override
   Widget build(BuildContext context) {
-    return ListView(
-      children: <Widget>[
-        Text("Return Value: $returnValue"),
-        Divider(),
-        Text("Return Error: $returnError"),
-        Divider(),
-        Text(connectionState.toString()),
-        Divider(),
-        RaisedButton(
-          child: Text("requestAccess()"),
-          onPressed: wrapCall(RxBle.requestAccess),
-        ),
-        RaisedButton(
-          child: Text("requestAccess(showRationale)"),
-          onPressed: wrapCall(requestAccessRationale),
-        ),
-        RaisedButton(
-          child: Text("hasAccess()"),
-          onPressed: wrapCall(RxBle.hasAccess),
-        ),
-        RaisedButton(
-          child: Text("openAppSettings()"),
-          onPressed: wrapCall(RxBle.openAppSettings),
-        ),
-        Divider(),
-        RaisedButton(
-          child: Text("startScan()"),
-          onPressed: wrapCall(startScan),
-        ),
-        RaisedButton(
-          child: Text("stopScan()"),
-          onPressed: wrapCall(RxBle.stopScan),
-        ),
-        Divider(),
-        if (results.isEmpty) Text('Start scanning to connect to a device'),
-        for (final scanResult in results.values) ...[
+    return Padding(
+      padding: const EdgeInsets.all(8.0),
+      child: ListView(
+        children: <Widget>[
+          Text("Return Value:"),
+          SingleChildScrollView(
+            scrollDirection: Axis.horizontal,
+            child: Container(
+              color: Colors.black,
+              child: Text(
+                "$returnValue",
+                style: TextStyle(
+                  fontFamily: 'DejaVuSansMono',
+                  color: Colors.white,
+                ),
+              ),
+            ),
+          ),
+          Divider(),
+          Text("Error:"),
+          SingleChildScrollView(
+            scrollDirection: Axis.horizontal,
+            child: Container(
+              color: Colors.black,
+              child: Text(
+                "$returnError",
+                style: TextStyle(
+                  fontFamily: 'DejaVuSansMono',
+                  color: Colors.white,
+                ),
+              ),
+            ),
+          ),
+          Divider(),
+          Container(
+            color: Colors.black,
+            child: Text(
+              connectionState.toString(),
+              style: TextStyle(
+                fontFamily: 'DejaVuSansMono',
+                color: Colors.white,
+              ),
+            ),
+          ),
+          Divider(),
           RaisedButton(
-            child: Text("conenct(${scanResult.macAddress})"),
-            onPressed: wrapCall(() async {
-              setState(() {
-                macAddress = scanResult.macAddress;
-              });
-              await for (final state in RxBle.connect(macAddress)) {
-                print("device state: $state");
-                if (!mounted) return;
+            child: Text(
+              "requestAccess()",
+              style: TextStyle(fontFamily: 'DejaVuSansMono'),
+            ),
+            onPressed: wrapCall(RxBle.requestAccess),
+          ),
+          RaisedButton(
+            child: Text(
+              "requestAccess(showRationale)",
+              style: TextStyle(fontFamily: 'DejaVuSansMono'),
+            ),
+            onPressed: wrapCall(requestAccessRationale),
+          ),
+          RaisedButton(
+            child: Text(
+              "hasAccess()",
+              style: TextStyle(fontFamily: 'DejaVuSansMono'),
+            ),
+            onPressed: wrapCall(RxBle.hasAccess),
+          ),
+          RaisedButton(
+            child: Text(
+              "openAppSettings()",
+              style: TextStyle(fontFamily: 'DejaVuSansMono'),
+            ),
+            onPressed: wrapCall(RxBle.openAppSettings),
+          ),
+          Divider(),
+          RaisedButton(
+            child: Text(
+              "startScan()",
+              style: TextStyle(fontFamily: 'DejaVuSansMono'),
+            ),
+            onPressed: wrapCall(startScan),
+          ),
+          RaisedButton(
+            child: Text(
+              "stopScan()",
+              style: TextStyle(fontFamily: 'DejaVuSansMono'),
+            ),
+            onPressed: wrapCall(RxBle.stopScan),
+          ),
+          Divider(),
+          if (results.isEmpty) Text('Start scanning to connect to a device'),
+          for (final scanResult in results.values)
+            RaisedButton(
+              child: Text(
+                "conenct(${scanResult.macAddress})",
+                style: TextStyle(fontFamily: 'DejaVuSansMono'),
+              ),
+              onPressed: wrapCall(() async {
+                await RxBle.stopScan();
                 setState(() {
-                  connectionState = state;
+                  macAddress = scanResult.macAddress;
                 });
-              }
-            }),
-          ),
-          RaisedButton(
-            child: Text("disconnect()"),
-            onPressed: wrapCall(() async {
-              await RxBle.disconnect();
-            }),
-          )
+                await for (final state in RxBle.connect(macAddress)) {
+                  print("device state: $state");
+                  if (!mounted) return;
+                  setState(() {
+                    connectionState = state;
+                  });
+                }
+              }),
+            ),
+          Divider(),
+          if (connectionState == BleConnectionState.connected) ...[
+            RaisedButton(
+              child: Text(
+                "disconnect()",
+                style: TextStyle(fontFamily: 'DejaVuSansMono'),
+              ),
+              onPressed: wrapCall(() async {
+                await RxBle.disconnect();
+              }),
+            ),
+            TextField(
+              controller: uuidControl,
+              decoration: InputDecoration(
+                labelText: "uuid",
+              ),
+            ),
+            RaisedButton(
+              child: Text(
+                "device.readChar()",
+                style: TextStyle(fontFamily: 'DejaVuSansMono'),
+              ),
+              onPressed: wrapCall(readChar),
+            ),
+            TextField(
+              controller: writeCharValueControl,
+              decoration: InputDecoration(
+                labelText: "writeChar value",
+              ),
+            ),
+            RaisedButton(
+              child: Text(
+                "device.writeChar()",
+                style: TextStyle(fontFamily: 'DejaVuSansMono'),
+              ),
+              onPressed: wrapCall(writeChar),
+            ),
+            TextField(
+              controller: mtuControl,
+              decoration: InputDecoration(
+                labelText: "mtu",
+              ),
+            ),
+            RaisedButton(
+              child: Text(
+                "device.requestMtu()",
+                style: TextStyle(fontFamily: 'DejaVuSansMono'),
+              ),
+              onPressed: wrapCall(requestMtu),
+            ),
+          ] else
+            Text("Connect to a device to perform GATT operations."),
         ],
-        Divider(),
-        if (connectionState == BleConnectionState.connected) ...[
-          TextField(
-            controller: uuidControl,
-            decoration: InputDecoration(
-              labelText: "uuid",
-            ),
-          ),
-          RaisedButton(
-            child: Text("device.readChar()"),
-            onPressed: wrapCall(readChar),
-          ),
-          TextField(
-            controller: writeCharValueControl,
-            decoration: InputDecoration(
-              labelText: "writeChar value",
-            ),
-          ),
-          RaisedButton(
-            child: Text("device.writeChar()"),
-            onPressed: wrapCall(writeChar),
-          ),
-          TextField(
-            controller: mtuControl,
-            decoration: InputDecoration(
-              labelText: "MTU",
-            ),
-          ),
-          RaisedButton(
-            child: Text("device.requestMtu()"),
-            onPressed: wrapCall(requestMtu),
-          ),
-        ] else
-          Text("Connect to a device to perform GATT operations."),
-      ],
+      ),
     );
   }
 }

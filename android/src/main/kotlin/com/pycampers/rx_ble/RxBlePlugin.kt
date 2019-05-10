@@ -71,11 +71,11 @@ class RxBlePlugin(registrar: Registrar) : PermissionMagic(registrar) {
         scanDisposable = null
     }
 
-    fun startScan(events: EventSink) {
+    fun startScan(scanMode: Int, scanFilter: ScanFilter, events: EventSink) {
         stopScan()
         scanDisposable = bleClient.scanBleDevices(
-            ScanSettings.Builder().setScanMode(ScanSettings.SCAN_MODE_LOW_LATENCY).build(),
-            ScanFilter.Builder().build()
+            ScanSettings.Builder().setScanMode(scanMode).build(),
+            scanFilter
         ).subscribe(
             { scanResult ->
                 trySend(events) {
@@ -95,12 +95,7 @@ class RxBlePlugin(registrar: Registrar) : PermissionMagic(registrar) {
     fun connect(device: RxBleDevice, waitForDevice: Boolean, events: EventSink) {
         disconnect()
         connectDisposable = device.establishConnection(waitForDevice).subscribe(
-            {
-                trySend(events) {
-                    bleConnectionStore[device.macAddress] = it
-                    device.connectionState.ordinal
-                }
-            },
+            { bleConnectionStore[device.macAddress] = it },
             {
                 trySendThrowable(events, it)
                 connectDisposable?.dispose()
@@ -108,16 +103,19 @@ class RxBlePlugin(registrar: Registrar) : PermissionMagic(registrar) {
         )
 
         observeStateDisposable?.dispose()
-        observeStateDisposable = device.observeConnectionStateChanges().subscribe {
-            trySend(events) { it.ordinal }
-        }
+        observeStateDisposable = device.observeConnectionStateChanges().subscribe { trySend(events) { it.ordinal } }
     }
 
     init {
         scanChannel.setStreamHandler(object : StreamHandler {
-            override fun onListen(args: Any?, events: EventSink) {
+            override fun onListen(_args: Any?, events: EventSink) {
                 catchErrors(events) {
-                    startScan(events)
+                    val args = _args as Map<*, *>
+                    val scanMode = args["scanMode"] as Int - 1
+                    val filter = ScanFilter.Builder()
+                    (args["macAddress"] as String?)?.let { filter.setDeviceAddress(it) }
+                    (args["name"] as String?)?.let { filter.setDeviceName(it) }
+                    startScan(scanMode, filter.build(), events)
                 }
             }
 
@@ -127,6 +125,7 @@ class RxBlePlugin(registrar: Registrar) : PermissionMagic(registrar) {
         })
         connectChannel.setStreamHandler(object : StreamHandler {
             override fun onListen(_args: Any?, events: EventSink) {
+                println(">>>>> START SCAN!!")
                 catchErrors(events) {
                     val args = _args as Map<*, *>
                     val macAddress = args["macAddress"] as String
@@ -137,6 +136,7 @@ class RxBlePlugin(registrar: Registrar) : PermissionMagic(registrar) {
             }
 
             override fun onCancel(args: Any?) {
+                println(">>>>> STOP SCAN!!")
                 stopScan()
             }
         })
