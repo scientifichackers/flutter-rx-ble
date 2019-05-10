@@ -1,3 +1,5 @@
+import 'dart:convert';
+
 import 'package:flutter/material.dart';
 import 'package:rx_ble/rx_ble.dart';
 
@@ -60,17 +62,43 @@ class MyApp extends StatefulWidget {
 
 class _MyAppState extends State<MyApp> {
   var returnValue;
+  Exception returnError;
+  final results = <String, ScanResult>{};
+  final uuidControl = TextEditingController(
+    text: "0000ee09-0000-1000-8000-00805f9b34fb",
+  );
+  final mtuControl = TextEditingController(
+    text: "0000ee09-0000-1000-8000-00805f9b34fb",
+  );
+  final writeCharValueControl = TextEditingController(
+    text: "0000ee09-0000-1000-8000-00805f9b34fb",
+  );
+  String macAddress;
+  var connectionState = BleConnectionState.disconnected;
 
-  Future<void> requestAccess() async {
-    final value = await RxBle.requestAccess();
-    if (!mounted) return;
-    setState(() {
-      returnValue = value;
-    });
+  Function wrapCall(Function fn) {
+    return () async {
+      var value;
+      try {
+        value = await fn();
+      } catch (e, trace) {
+        print('returnError: $e\n$trace');
+        if (!mounted) return;
+        setState(() {
+          returnError = e;
+        });
+        return;
+      }
+      print('returnValue: $value');
+      if (!mounted) return;
+      setState(() {
+        returnValue = value;
+      });
+    };
   }
 
   Future<void> requestAccessRationale() async {
-    final value = await RxBle.requestAccess(
+    return await RxBle.requestAccess(
       showRationale: () async {
         return await showDialog(
               context: context,
@@ -79,42 +107,135 @@ class _MyAppState extends State<MyApp> {
             false;
       },
     );
-    if (!mounted) return;
-    setState(() {
-      returnValue = value;
-    });
   }
 
-  Future<void> hasAccess() async {
-    final value = await RxBle.hasAccess();
-    if (!mounted) return;
-    setState(() {
-      returnValue = value;
-    });
+  Future<void> startScan() async {
+    await for (final scanResult in RxBle.startScan()) {
+      results[scanResult.macAddress] = scanResult;
+      if (!mounted) return;
+      setState(() {
+        returnValue = JsonEncoder.withIndent(" " * 2, (o) {
+          if (o is ScanResult) {
+            return o.toString();
+          } else {
+            return o;
+          }
+        }).convert(results);
+      });
+    }
+  }
+
+  Future<void> readChar() async {
+    final value = await RxBle.readChar(macAddress, uuidControl.text);
+    return value.toString() + "\n\n" + utf8.decode(value);
+  }
+
+  Future<void> writeChar() async {
+    return await RxBle.writeChar(
+      macAddress,
+      uuidControl.text,
+      utf8.encode(writeCharValueControl.text),
+    );
+  }
+
+  Future<void> requestMtu() async {
+    return await RxBle.requestMtu(macAddress, int.parse(mtuControl.text));
   }
 
   @override
   Widget build(BuildContext context) {
     return ListView(
       children: <Widget>[
-        Text(returnValue?.toString() ?? "Return values appear here."),
+        Text("Return Value: $returnValue"),
+        Divider(),
+        Text("Return Error: $returnError"),
+        Divider(),
+        Text(connectionState.toString()),
         Divider(),
         RaisedButton(
           child: Text("requestAccess()"),
-          onPressed: requestAccess,
+          onPressed: wrapCall(RxBle.requestAccess),
         ),
         RaisedButton(
           child: Text("requestAccess(showRationale)"),
-          onPressed: requestAccessRationale,
+          onPressed: wrapCall(requestAccessRationale),
         ),
         RaisedButton(
           child: Text("hasAccess()"),
-          onPressed: hasAccess,
+          onPressed: wrapCall(RxBle.hasAccess),
         ),
         RaisedButton(
           child: Text("openAppSettings()"),
-          onPressed: RxBle.openAppSettings,
+          onPressed: wrapCall(RxBle.openAppSettings),
         ),
+        Divider(),
+        RaisedButton(
+          child: Text("startScan()"),
+          onPressed: wrapCall(startScan),
+        ),
+        RaisedButton(
+          child: Text("stopScan()"),
+          onPressed: wrapCall(RxBle.stopScan),
+        ),
+        Divider(),
+        if (results.isEmpty) Text('Start scanning to connect to a device'),
+        for (final scanResult in results.values) ...[
+          RaisedButton(
+            child: Text("conenct(${scanResult.macAddress})"),
+            onPressed: wrapCall(() async {
+              setState(() {
+                macAddress = scanResult.macAddress;
+              });
+              await for (final state in RxBle.connect(macAddress)) {
+                print("device state: $state");
+                if (!mounted) return;
+                setState(() {
+                  connectionState = state;
+                });
+              }
+            }),
+          ),
+          RaisedButton(
+            child: Text("disconnect()"),
+            onPressed: wrapCall(() async {
+              await RxBle.disconnect();
+            }),
+          )
+        ],
+        Divider(),
+        if (connectionState == BleConnectionState.connected) ...[
+          TextField(
+            controller: uuidControl,
+            decoration: InputDecoration(
+              labelText: "uuid",
+            ),
+          ),
+          RaisedButton(
+            child: Text("device.readChar()"),
+            onPressed: wrapCall(readChar),
+          ),
+          TextField(
+            controller: writeCharValueControl,
+            decoration: InputDecoration(
+              labelText: "writeChar value",
+            ),
+          ),
+          RaisedButton(
+            child: Text("device.writeChar()"),
+            onPressed: wrapCall(writeChar),
+          ),
+          TextField(
+            controller: mtuControl,
+            decoration: InputDecoration(
+              labelText: "MTU",
+            ),
+          ),
+          RaisedButton(
+            child: Text("device.requestMtu()"),
+            onPressed: wrapCall(requestMtu),
+          ),
+        ] else
+          Text("Connect to a device to perform GATT operations."),
       ],
     );
   }

@@ -56,10 +56,10 @@ packages:
   method_call_dispatcher:
     dependency: "direct main"
     description:
-      path: "../method_call_dispatcher"
-      relative: true
-    source: path
-    version: "0.2.1"
+      name: method_call_dispatcher
+      url: "https://pub.dartlang.org"
+    source: hosted
+    version: "0.3.0"
   path:
     dependency: transitive
     description:

@@ -1,30 +1,13 @@
 import 'dart:async';
+import 'dart:typed_data';
 
 import 'package:flutter/services.dart';
+import 'package:rx_ble/src/exception_serializer.dart';
+import 'package:rx_ble/src/models.dart';
 
-enum AccessStatus {
-  ok,
-
-  /// bluetooth is disabled.
-  bluetoothDisabled,
-
-  /// location is disabled.
-  locationDisabled,
-
-  /// location permission denied by user.
-  locationDenied,
-
-  /// location permission denied by user,
-  /// and "Never ask again" checkbox was ticked.
-  ///
-  /// In this case, the only way to acquire permission,
-  /// is to make the user manually go to app settings,
-  /// and enable the switch.
-  ///
-  /// You may use the utility method [RxBle.openAppSettings]
-  /// to open the settings page programmatically.
-  locationDeniedNeverAskAgain
-}
+export 'package:rx_ble/src/exceptions.dart';
+export 'package:rx_ble/src/models.dart';
+export 'package:rx_ble/src/scan_settings.dart';
 
 /// A callback that allows showing a small message to user
 /// explaining the need for the location permission.
@@ -34,13 +17,25 @@ enum AccessStatus {
 /// asking the user for permission or not.
 typedef Future<bool> ShowLocationPermissionRationale();
 
+const PKG_NAME = "com.pycampers.rx_ble";
+
 class RxBle {
-  static const channel = MethodChannel('rx_ble');
+  static const channel = MethodChannel(PKG_NAME);
+  static const scanChannel = EventChannel('$PKG_NAME/scan');
+  static const connectChannel = EventChannel('$PKG_NAME/connect');
+
+  static Future<dynamic> invokeMethod(String method, [args]) async {
+    try {
+      return await channel.invokeMethod(method, args);
+    } on PlatformException catch (e) {
+      rethrowException(e);
+    }
+  }
 
   /// Check if the app has all the necessary permissions, settings, etc.
   /// that are needed for the plugin to function.
   static Future<bool> hasAccess() async {
-    return await channel.invokeMethod("hasAccess");
+    return await invokeMethod("hasAccess");
   }
 
   /// Check if the app has all the necessary permissions, settings, etc.
@@ -52,7 +47,7 @@ class RxBle {
   ///
   /// No need to call [hasAccess] when using this function.
   ///
-  /// [showRationale] -
+  /// [showRationale] - (Optional but recommended)
   ///   A callback function that gets called when the
   ///   app should probably show a message explaining why it needs the permission,
   ///   since the user keeps denying the permission request!
@@ -60,22 +55,21 @@ class RxBle {
   ///   It is left up-to the developer to show the message however they wish.
   ///   The default behavior is to continue asking user for permission anyway.
   ///
-  ///   For more info, refer the Android docs here:
-  ///     https://developer.android.com/training/permissions/requesting#explain
+  ///   For more info, refer the [Android documentation](https://developer.android.com/training/permissions/requesting#explain).
   static Future<AccessStatus> requestAccess({
     ShowLocationPermissionRationale showRationale,
   }) async {
     int index;
     AccessStatus status;
 
-    index = await channel.invokeMethod("requestAccess");
+    index = await invokeMethod("requestAccess");
     try {
       status = AccessStatus.values[index];
     } on RangeError {
       if (!(await showRationale?.call() ?? true)) {
         return AccessStatus.locationDenied;
       }
-      index = await channel.invokeMethod("requestLocPerm");
+      index = await invokeMethod("requestLocPerm");
       status = AccessStatus.values[index];
     }
 
@@ -83,6 +77,107 @@ class RxBle {
   }
 
   static Future<void> openAppSettings() async {
-    await channel.invokeMethod("openAppSettings");
+    await invokeMethod("openAppSettings");
+  }
+
+  /// Returns an infinite [Stream] emitting BLE [ScanResult]s.
+  ///
+  /// Scanning can be stopped by either cancelling the [StreamSubscription],
+  /// or by calling [stopScan].
+  static Stream<ScanResult> startScan() {
+    return scanChannel.receiveBroadcastStream().map((event) {
+      return ScanResult.fromJson(event);
+    });
+  }
+
+  /// Stops the Scan started by [startScan].
+  static Future<void> stopScan() async {
+    await invokeMethod("stopScan");
+  }
+
+  static Future<BleConnectionState> getConnectionState(
+      String macAddress) async {
+    return BleConnectionState
+        .values[await RxBle.invokeMethod("getConnectionState", macAddress)];
+  }
+
+  /// Establish connection the this BLE device,
+  /// and emit the [BleConnectionState] changes.
+  ///
+  /// In cases when the BLE device is _not_ available at the time of calling this function,
+  /// enabling [waitForDevice] will make the framework wait for device to start advertising.
+  ///
+  /// [BleConnectionState] is just a convenience value for
+  /// easy monitoring that may be useful in the UI.
+  /// It is not meant to be a trigger for reconnecting to a
+  /// particular device. For that, use the [BleException]s.
+  ///
+  /// Throws the following errors:
+  ///   - [BleDisconnectedException]
+  ///   - [BleGattException]
+  ///   - [BleGattCallbackTimeoutException].
+  ///
+  /// Device can be disconnected by either cancelling the [StreamSubscription],
+  /// or by calling [disconnect].
+  static Stream<BleConnectionState> connect(String macAddress,
+      {bool waitForDevice: true}) {
+    return RxBle.connectChannel.receiveBroadcastStream({
+      "macAddress": macAddress,
+      "waitForDevice": waitForDevice,
+    }).map((it) {
+      return BleConnectionState.values[it];
+    }).handleError((e) {
+      rethrowException(e);
+    });
+  }
+
+  /// Disconnect with this device.
+  static Future<void> disconnect() async {
+    await RxBle.invokeMethod("disconnect");
+  }
+
+  /// Performs GATT read operation on a characteristic with given [uuid].
+  ///
+  /// Throws the following errors:
+  ///   - [BleCharacteristicNotFoundException]
+  ///   - [BleGattCannotStartException]
+  ///   - [BleGattException].
+  static Future<Uint8List> readChar(String macAddress, String uuid) async {
+    return await RxBle.invokeMethod("readChar", {
+      "macAddress": macAddress,
+      "uuid": uuid,
+    });
+  }
+
+  /// Performs GATT write operation on a characteristic with given [uuid] and [value].
+  ///
+  /// Throws the following errors:
+  ///   - [BleCharacteristicNotFoundException]
+  ///   - [BleGattCannotStartException]
+  ///   - [BleGattException].
+  static Future<Uint8List> writeChar(
+    String macAddress,
+    String uuid,
+    Uint8List value,
+  ) async {
+    return await RxBle.invokeMethod("readChar", {
+      "macAddress": macAddress,
+      "uuid": uuid,
+      "value": value,
+    });
+  }
+
+  /// Performs GATT MTU (Maximum Transfer Unit) request.
+  ///
+  /// Timeouts after 10 seconds.
+  ///
+  /// Throws the following errors:
+  ///   - [BleGattCannotStartException]
+  ///   - [BleGattException]
+  static Future<int> requestMtu(String macAddress, int value) async {
+    return await RxBle.invokeMethod("readChar", {
+      "macAddress": macAddress,
+      "value": value,
+    });
   }
 }

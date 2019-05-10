@@ -11,8 +11,7 @@ dependencies:
   flutter:
     sdk: flutter
 
-  method_call_dispatcher:
-    path: ../method_call_dispatcher
+  method_call_dispatcher: ^0.3.0
 
 dev_dependencies:
   flutter_test:
