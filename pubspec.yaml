@@ -1,6 +1,6 @@
 name: rx_ble
 description: A Flutter BLE plugin, based on RxAndroidBle and RxBluetoothKit.
-version: 0.0.1
+version: 0.1.0
 author: Dev Aggarwal <devpxy@gmail.com>
 homepage: https://github.com/pycampers/flutter_pdf_viewer
 

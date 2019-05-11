@@ -47,6 +47,9 @@ class RxBlePlugin(registrar: Registrar) : PermissionMagic(registrar) {
     var connectDisposable: Disposable? = null
     var observeStateDisposable: Disposable? = null
 
+    var connectEvents: EventSink? = null
+    var scanEvents: EventSink? = null
+
     val bleDeviceStore = mutableMapOf<String, RxBleDevice>()
     val bleConnectionStore = mutableMapOf<String, RxBleConnection>()
 
@@ -69,6 +72,8 @@ class RxBlePlugin(registrar: Registrar) : PermissionMagic(registrar) {
     fun stopScan() {
         scanDisposable?.dispose()
         scanDisposable = null
+        scanEvents?.endOfStream()
+        scanEvents = null
     }
 
     fun startScan(scanMode: Int, scanFilter: ScanFilter, events: EventSink) {
@@ -85,25 +90,27 @@ class RxBlePlugin(registrar: Registrar) : PermissionMagic(registrar) {
             },
             { trySendThrowable(events, it) }
         )
+        scanEvents = events
     }
 
     fun disconnect() {
         connectDisposable?.dispose()
         connectDisposable = null
+        connectEvents?.endOfStream()
+        connectEvents = null
     }
 
     fun connect(device: RxBleDevice, waitForDevice: Boolean, events: EventSink) {
         disconnect()
         connectDisposable = device.establishConnection(waitForDevice).subscribe(
             { bleConnectionStore[device.macAddress] = it },
-            {
-                trySendThrowable(events, it)
-                connectDisposable?.dispose()
-            }
+            { trySendThrowable(events, it) }
         )
 
         observeStateDisposable?.dispose()
         observeStateDisposable = device.observeConnectionStateChanges().subscribe { trySend(events) { it.ordinal } }
+
+        connectEvents = events
     }
 
     init {
@@ -125,7 +132,6 @@ class RxBlePlugin(registrar: Registrar) : PermissionMagic(registrar) {
         })
         connectChannel.setStreamHandler(object : StreamHandler {
             override fun onListen(_args: Any?, events: EventSink) {
-                println(">>>>> START SCAN!!")
                 catchErrors(events) {
                     val args = _args as Map<*, *>
                     val macAddress = args["macAddress"] as String
@@ -136,8 +142,7 @@ class RxBlePlugin(registrar: Registrar) : PermissionMagic(registrar) {
             }
 
             override fun onCancel(args: Any?) {
-                println(">>>>> STOP SCAN!!")
-                stopScan()
+                disconnect()
             }
         })
     }

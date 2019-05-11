@@ -4,6 +4,7 @@ import 'dart:typed_data';
 
 import 'package:flutter/services.dart';
 import 'package:rx_ble/src/exception_serializer.dart';
+import 'package:rx_ble/src/exceptions.dart';
 import 'package:rx_ble/src/models.dart';
 
 export 'package:rx_ble/src/exceptions.dart';
@@ -91,8 +92,8 @@ class RxBle {
   }) {
     return scanChannel.receiveBroadcastStream({
       "scanMode": scanMode.index,
-      "macAddress": macAddress,
       "name": name,
+      "macAddress": macAddress,
     }).map((event) {
       return ScanResult.fromJson(event);
     }).handleError((e) {
@@ -106,7 +107,8 @@ class RxBle {
   }
 
   static Future<BleConnectionState> getConnectionState(
-      String macAddress) async {
+    String macAddress,
+  ) async {
     return BleConnectionState
         .values[await RxBle.invokeMethod("getConnectionState", macAddress)];
   }
@@ -133,6 +135,9 @@ class RxBle {
   /// Device can be disconnected by either cancelling the [StreamSubscription],
   /// or by calling [disconnect].
   ///
+  /// [autoConnect] will catch [BleDisconnectedException],
+  /// do a scan for the [macAddress], and connect automatically in background.
+  ///
   ///
   /// It is mandatory that you perform a scan before issuing a connect request.
   /// In cases where the caller hasn't done a scan,
@@ -144,18 +149,42 @@ class RxBle {
   ///   .timeout(Duration(seconds: 5))
   ///   .first;
   /// ```
+  ///
+  /// This is done automatically when [autoConnect] is enabled.
   static Stream<BleConnectionState> connect(
     String macAddress, {
-    bool waitForDevice: true,
-  }) {
-    return RxBle.connectChannel.receiveBroadcastStream({
-      "macAddress": macAddress,
-      "waitForDevice": waitForDevice,
-    }).map((it) {
-      return BleConnectionState.values[it];
-    }).handleError((e) {
-      rethrowException(e);
-    });
+    bool waitForDevice: false,
+    bool autoConnect: false,
+    ScanModes scanMode: ScanModes.lowPower,
+  }) async* {
+    while (true) {
+      if (autoConnect) {
+        await RxBle.startScan(macAddress: macAddress, scanMode: scanMode).first;
+      }
+
+      final stream = RxBle.connectChannel.receiveBroadcastStream({
+        "macAddress": macAddress,
+        "waitForDevice": waitForDevice,
+      }).map((it) {
+        return BleConnectionState.values[it];
+      }).handleError((e) {
+        rethrowException(e);
+      });
+
+      try {
+        await for (final state in stream) {
+          yield state;
+        }
+      } on BleDisconnectedException {
+        if (!autoConnect) rethrow;
+        yield BleConnectionState.disconnected;
+        await RxBle.startScan(macAddress: macAddress, scanMode: scanMode).first;
+        continue;
+      }
+
+      yield BleConnectionState.disconnected;
+      break;
+    }
   }
 
   /// Disconnect with this device.
