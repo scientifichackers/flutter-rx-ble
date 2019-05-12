@@ -4,6 +4,7 @@ import android.Manifest.permission.ACCESS_COARSE_LOCATION
 import com.polidea.rxandroidble2.RxBleClient
 import com.polidea.rxandroidble2.RxBleConnection
 import com.polidea.rxandroidble2.RxBleDevice
+import com.polidea.rxandroidble2.exceptions.BleException
 import com.polidea.rxandroidble2.scan.ScanFilter
 import com.polidea.rxandroidble2.scan.ScanSettings
 import com.pycampers.method_call_dispatcher.catchErrors
@@ -19,6 +20,8 @@ import io.flutter.plugin.common.MethodChannel.Result
 import io.flutter.plugin.common.PluginRegistry.Registrar
 import io.reactivex.Single
 import io.reactivex.disposables.Disposable
+import io.reactivex.exceptions.UndeliverableException
+import io.reactivex.plugins.RxJavaPlugins
 import java.util.UUID
 
 const val REQUEST_ENABLE_BT = 1
@@ -114,6 +117,13 @@ class RxBlePlugin(registrar: Registrar) : PermissionMagic(registrar) {
     }
 
     init {
+        RxJavaPlugins.setErrorHandler { error ->
+            if (error is UndeliverableException && error.cause is BleException) {
+                // ignore BleExceptions as they were surely delivered at least once
+                return@setErrorHandler
+            }
+            throw error
+        }
         scanChannel.setStreamHandler(object : StreamHandler {
             override fun onListen(_args: Any?, events: EventSink) {
                 catchErrors(events) {
