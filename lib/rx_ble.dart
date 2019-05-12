@@ -242,4 +242,9 @@ class RxBle {
   static String charToString(Uint8List value) {
     return utf8.decode(value.where((it) => it != 0).toList()).trim();
   }
+
+  /// Converts utf-8 string to  characteristic value
+  static Uint8List stringToChar(String value) {
+    return utf8.encode(value);
+  }
 }
