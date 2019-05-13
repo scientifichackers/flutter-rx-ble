@@ -7,8 +7,7 @@ fun dumpScanResult(result: ScanResult): List<*> {
             bleDevice.name,
             bleDevice.macAddress,
             rssi,
-            (System.currentTimeMillis() - SystemClock.elapsedRealtime() + timestampNanos / 1e6).toLong(),
-            callbackType.ordinal
+            (System.currentTimeMillis() - SystemClock.elapsedRealtime() + timestampNanos / 1e6).toLong()
         )
     }
 }

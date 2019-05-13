@@ -57,14 +57,12 @@ class ScanResult {
   final String name, macAddress;
   final int rssi;
   final DateTime time;
-  final ScanCallbackType callbackType;
 
   ScanResult.fromJson(List msg)
       : name = msg[0],
         macAddress = msg[1],
         rssi = msg[2],
-        time = DateTime.fromMillisecondsSinceEpoch(msg[3]),
-        callbackType = ScanCallbackType.values[msg[4]];
+        time = DateTime.fromMillisecondsSinceEpoch(msg[3]);
 
   @override
   String toString() {

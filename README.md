@@ -4,6 +4,8 @@
 
 A Flutter BLE plugin, based on the wonderful [RxAndroidBle](https://github.com/Polidea/RxAndroidBle) and [RxBluetoothKit](https://github.com/Polidea/RxBluetoothKit) libraries.
 
+*ios currently under development*
+
 ### Batteries included.
 
 - Acquire every permission and setting required for Bluetooth access, using a _single_ method - `RxBle.requestAccess()`.
