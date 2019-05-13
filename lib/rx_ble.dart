@@ -157,7 +157,7 @@ class RxBle {
     bool autoConnect: false,
     ScanModes scanMode: ScanModes.lowPower,
   }) async* {
-    Future<void> scan() async {
+    Future<void> doScan() async {
       final scanStream =
           RxBle.startScan(macAddress: macAddress, scanMode: scanMode);
       await for (final _ in scanStream) break;
@@ -165,7 +165,7 @@ class RxBle {
 
     while (true) {
       if (autoConnect) {
-        await scan();
+        await doScan();
       }
 
       final stream = RxBle.connectChannel.receiveBroadcastStream({
@@ -182,9 +182,8 @@ class RxBle {
           yield state;
         }
       } on BleDisconnectedException {
-        yield BleConnectionState.disconnected;
         if (!autoConnect) rethrow;
-        await scan();
+        yield BleConnectionState.disconnected;
         continue;
       }
 
