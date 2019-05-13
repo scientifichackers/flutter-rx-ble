@@ -166,6 +166,22 @@ class _MyAppState extends State<MyApp> {
     return "${end - start} ms";
   }
 
+  Future<void> continuousRead() async {
+    while (true) {
+      final start = DateTime.now().millisecondsSinceEpoch;
+      final value = await RxBle.readChar(macAddress, uuidControl.text);
+      final end = DateTime.now().millisecondsSinceEpoch;
+      if (!mounted) return;
+      setState(() {
+        returnValue = value.toString() +
+            "\n\n" +
+            utf8.decode(value) +
+            "\n\n" +
+            "Delay: ${start - end} ms";
+      });
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     return Stack(
@@ -354,7 +370,14 @@ class _MyAppState extends State<MyApp> {
                     style: TextStyle(fontFamily: 'DejaVuSansMono'),
                   ),
                   onPressed: wrapCall(randomWrite),
-                )
+                ),
+                RaisedButton(
+                  child: Text(
+                    'Test continuous read',
+                    style: TextStyle(fontFamily: 'DejaVuSansMono'),
+                  ),
+                  onPressed: wrapCall(continuousRead),
+                ),
               ],
             ],
           ),
