@@ -192,9 +192,12 @@ class RxBle {
     }
   }
 
-  /// Disconnect with this device.
-  static Future<void> disconnect() async {
-    await RxBle.invokeMethod("disconnect");
+  /// Disconnect with the device with [macAddress].
+  ///
+  /// If [macAddress] is not provided,
+  /// then all previously connected devices are disconnected.
+  static Future<void> disconnect({String macAddress}) async {
+    await RxBle.invokeMethod("disconnect", macAddress);
   }
 
   /// Performs GATT read operation on a characteristic with given [uuid].

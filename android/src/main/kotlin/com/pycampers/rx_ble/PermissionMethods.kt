@@ -17,12 +17,13 @@ import com.google.android.gms.location.LocationServices
 import com.google.android.gms.location.LocationSettingsRequest
 import com.google.android.gms.location.LocationSettingsStates
 import com.google.android.gms.location.LocationSettingsStatusCodes
-import com.pycampers.method_call_dispatcher.MethodCallDispatcher
 import com.pycampers.method_call_dispatcher.catchErrors
 import com.pycampers.method_call_dispatcher.trySend
 import io.flutter.plugin.common.MethodCall
 import io.flutter.plugin.common.MethodChannel.Result
 import io.flutter.plugin.common.PluginRegistry
+import io.flutter.plugin.common.PluginRegistry.ActivityResultListener
+import io.flutter.plugin.common.PluginRegistry.RequestPermissionsResultListener
 import java.util.ArrayDeque
 import java.util.NoSuchElementException
 
@@ -35,16 +36,24 @@ enum class AccessStatus {
     LOC_DENIED_SHOW_PERM_RATIONALE,
 }
 
-open class PermissionMagic(val registrar: PluginRegistry.Registrar) : MethodCallDispatcher(),
-    PluginRegistry.ActivityResultListener, PluginRegistry.RequestPermissionsResultListener {
-    val btEnableReqQ = ArrayDeque<Result>()
-    val locEnableReqQ = ArrayDeque<Result>()
-    val locPermReqQ = ArrayDeque<Result>()
+interface PermissionInterface {
+    fun requestLocPerm(call: MethodCall, result: Result)
+    fun hasAccess(call: MethodCall, result: Result)
+    fun requestAccess(call: MethodCall, result: Result)
+    fun openAppSettings(call: MethodCall, result: Result)
+}
+
+class PermissionMethods(val registrar: PluginRegistry.Registrar) : ActivityResultListener, RequestPermissionsResultListener,
+    PermissionInterface {
 
     val activity: Activity
         get() = registrar.activity()
     val context: Context
         get() = activity.applicationContext
+
+    val btEnableReqQ = ArrayDeque<Result>()
+    val locEnableReqQ = ArrayDeque<Result>()
+    val locPermReqQ = ArrayDeque<Result>()
 
     init {
         registrar.addActivityResultListener(this)
@@ -52,7 +61,7 @@ open class PermissionMagic(val registrar: PluginRegistry.Registrar) : MethodCall
     }
 
     fun hasLocPerm(): Boolean {
-        return Build.VERSION.SDK_INT < Build.VERSION_CODES.M
+        return Build.VERSION.SDK_INT<Build.VERSION_CODES.M
             || context.checkSelfPermission(LOC_PERM) == PackageManager.PERMISSION_GRANTED
     }
 
@@ -71,13 +80,6 @@ open class PermissionMagic(val registrar: PluginRegistry.Registrar) : MethodCall
         } else {
             reallyRequestLocPerm(result)
         }
-    }
-
-    fun requestLocPerm(call: MethodCall, result: Result) {
-        if (hasLocPerm()) {
-            return result.success(AccessStatus.OK.ordinal)
-        }
-        reallyRequestLocPerm(result)
     }
 
     fun isLocEnabled(callback: (Boolean, e: ResolvableApiException?) -> Unit) {
@@ -200,7 +202,7 @@ open class PermissionMagic(val registrar: PluginRegistry.Registrar) : MethodCall
 
             val status = if (granted) {
                 AccessStatus.OK
-            } else if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) {
+            } else if (Build.VERSION.SDK_INT>=Build.VERSION_CODES.M) {
                 if (activity.shouldShowRequestPermissionRationale(LOC_PERM)) {
                     AccessStatus.LOC_DENIED
                 } else {
@@ -224,7 +226,14 @@ open class PermissionMagic(val registrar: PluginRegistry.Registrar) : MethodCall
         return value.isEnabled
     }
 
-    fun hasAccess(call: MethodCall, result: Result) {
+    override fun requestLocPerm(call: MethodCall, result: Result) {
+        if (hasLocPerm()) {
+            return result.success(AccessStatus.OK.ordinal)
+        }
+        reallyRequestLocPerm(result)
+    }
+
+    override fun hasAccess(call: MethodCall, result: Result) {
         isLocEnabled { enabled, _ ->
             trySend(result) {
                 isBluetoothEnabled() && enabled && hasLocPerm()
@@ -232,7 +241,7 @@ open class PermissionMagic(val registrar: PluginRegistry.Registrar) : MethodCall
         }
     }
 
-    fun requestAccess(call: MethodCall, result: Result) {
+    override fun requestAccess(call: MethodCall, result: Result) {
         if (isBluetoothEnabled()) {
             return requestLocEnable(result)
         }
@@ -242,7 +251,7 @@ open class PermissionMagic(val registrar: PluginRegistry.Registrar) : MethodCall
         btEnableReqQ.add(result)
     }
 
-    fun openAppSettings(call: MethodCall, result: Result) {
+    override fun openAppSettings(call: MethodCall, result: Result) {
         val intent = Intent(Settings.ACTION_APPLICATION_DETAILS_SETTINGS)
         val uri = Uri.fromParts("package", context.packageName, null)
         intent.data = uri
