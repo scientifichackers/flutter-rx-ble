@@ -2,21 +2,26 @@ package com.pycampers.rx_ble
 
 import com.polidea.rxandroidble2.RxBleConnection
 import com.polidea.rxandroidble2.RxBleDevice
-import com.pycampers.method_call_dispatcher.catchErrors
-import com.pycampers.method_call_dispatcher.trySend
-import com.pycampers.method_call_dispatcher.trySendThrowable
+import com.pycampers.plugin_scaffold.catchErrors
+import com.pycampers.plugin_scaffold.trySend
+import com.pycampers.plugin_scaffold.trySendThrowable
 import io.flutter.plugin.common.BinaryMessenger
 import io.flutter.plugin.common.EventChannel
 import io.flutter.plugin.common.EventChannel.EventSink
 import io.flutter.plugin.common.EventChannel.StreamHandler
 import io.flutter.plugin.common.MethodCall
 import io.flutter.plugin.common.MethodChannel.Result
+import io.reactivex.Single
 import io.reactivex.disposables.Disposable
+import java.util.UUID
 
 interface ConnectInterface {
     fun disconnect(call: MethodCall, result: Result)
-    fun getConnectionState(call: MethodCall, result: Result)
     fun getBleConnection(macAddress: String): RxBleConnection
+    fun getConnectionState(call: MethodCall, result: Result)
+    fun readChar(call: MethodCall, result: Result)
+    fun writeChar(call: MethodCall, result: Result)
+    fun requestMtu(call: MethodCall, result: Result)
 }
 
 class DeviceState {
@@ -109,5 +114,36 @@ class ConnectMethods(messenger: BinaryMessenger) : ConnectInterface {
     override fun getConnectionState(call: MethodCall, result: Result) {
         val macAddress = call.arguments as String
         result.success(getBleDevice(macAddress).connectionState.ordinal)
+    }
+
+    fun <T> subscribeAndSendResult(observable: Single<T>, result: Result) {
+        observable.run {
+            subscribe(
+                { trySend(result) { it } },
+                { trySendThrowable(result, it) }
+            )
+        }
+    }
+
+    override fun readChar(call: MethodCall, result: Result) {
+        val macAddress = call.argument<String>("macAddress")!!
+        val uuid = UUID.fromString(call.argument<String>("uuid")!!)
+        val connection = getBleConnection(macAddress)
+        subscribeAndSendResult(connection.readCharacteristic(uuid), result)
+    }
+
+    override fun writeChar(call: MethodCall, result: Result) {
+        val macAddress = call.argument<String>("macAddress")!!
+        val uuid = UUID.fromString(call.argument<String>("uuid")!!)
+        val value = call.argument<ByteArray>("value")!!
+        val connection = getBleConnection(macAddress)
+        subscribeAndSendResult(connection.writeCharacteristic(uuid, value), result)
+    }
+
+    override fun requestMtu(call: MethodCall, result: Result) {
+        val macAddress = call.argument<String>("macAddress")!!
+        val value = call.argument<Int>("value")!!
+        val connection = getBleConnection(macAddress)
+        subscribeAndSendResult(connection.requestMtu(value), result)
     }
 }

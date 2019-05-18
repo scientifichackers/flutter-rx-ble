@@ -17,8 +17,8 @@ import com.google.android.gms.location.LocationServices
 import com.google.android.gms.location.LocationSettingsRequest
 import com.google.android.gms.location.LocationSettingsStates
 import com.google.android.gms.location.LocationSettingsStatusCodes
-import com.pycampers.method_call_dispatcher.catchErrors
-import com.pycampers.method_call_dispatcher.trySend
+import com.pycampers.plugin_scaffold.catchErrors
+import com.pycampers.plugin_scaffold.trySend
 import io.flutter.plugin.common.MethodCall
 import io.flutter.plugin.common.MethodChannel.Result
 import io.flutter.plugin.common.PluginRegistry
@@ -28,12 +28,7 @@ import java.util.ArrayDeque
 import java.util.NoSuchElementException
 
 enum class AccessStatus {
-    OK,
-    BT_DISABLED,
-    LOC_DISABLED,
-    LOC_DENIED,
-    LOC_DENIED_NEVER_ASK_AGAIN,
-    LOC_DENIED_SHOW_PERM_RATIONALE,
+    OK, BT_DISABLED, LOC_DISABLED, LOC_DENIED, LOC_DENIED_NEVER_ASK_AGAIN, LOC_DENIED_SHOW_PERM_RATIONALE,
 }
 
 interface PermissionInterface {
@@ -43,7 +38,8 @@ interface PermissionInterface {
     fun openAppSettings(call: MethodCall, result: Result)
 }
 
-class PermissionMethods(val registrar: PluginRegistry.Registrar) : ActivityResultListener, RequestPermissionsResultListener,
+class PermissionMethods(val registrar: PluginRegistry.Registrar) : ActivityResultListener,
+    RequestPermissionsResultListener,
     PermissionInterface {
 
     val activity: Activity
@@ -61,7 +57,7 @@ class PermissionMethods(val registrar: PluginRegistry.Registrar) : ActivityResul
     }
 
     fun hasLocPerm(): Boolean {
-        return Build.VERSION.SDK_INT<Build.VERSION_CODES.M
+        return Build.VERSION.SDK_INT < Build.VERSION_CODES.M
             || context.checkSelfPermission(LOC_PERM) == PackageManager.PERMISSION_GRANTED
     }
 
@@ -202,7 +198,7 @@ class PermissionMethods(val registrar: PluginRegistry.Registrar) : ActivityResul
 
             val status = if (granted) {
                 AccessStatus.OK
-            } else if (Build.VERSION.SDK_INT>=Build.VERSION_CODES.M) {
+            } else if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) {
                 if (activity.shouldShowRequestPermissionRationale(LOC_PERM)) {
                     AccessStatus.LOC_DENIED
                 } else {

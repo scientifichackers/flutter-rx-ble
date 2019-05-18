@@ -6,7 +6,7 @@ Pod::Spec.new do |s|
   s.version          = '0.0.1'
   s.summary          = 'A Flutter BLE plugin, based on Polidea&#x27;s RxAndroidBle and RxBluetoothKit'
   s.description      = <<-DESC
-A Flutter BLE plugin, based on Polidea&#x27;s RxAndroidBle and RxBluetoothKit
+A Flutter BLE plugin, based on RxAndroidBle and RxBluetoothKit.
                        DESC
   s.homepage         = 'http://example.com'
   s.license          = { :file => '../LICENSE' }
@@ -17,5 +17,8 @@ A Flutter BLE plugin, based on Polidea&#x27;s RxAndroidBle and RxBluetoothKit
   s.dependency 'Flutter'
 
   s.ios.deployment_target = '8.0'
+
+  s.dependency 'RxBluetoothKit'
+  s.dependency 'plugin_scaffold'
 end
 

@@ -3,8 +3,7 @@ package com.pycampers.rx_ble
 import android.Manifest.permission.ACCESS_COARSE_LOCATION
 import com.polidea.rxandroidble2.RxBleClient
 import com.polidea.rxandroidble2.exceptions.BleException
-import com.pycampers.method_call_dispatcher.MethodCallDispatcher
-import io.flutter.plugin.common.MethodChannel
+import com.pycampers.plugin_scaffold.createMethodChannel
 import io.flutter.plugin.common.PluginRegistry.Registrar
 import io.reactivex.exceptions.UndeliverableException
 import io.reactivex.plugins.RxJavaPlugins
@@ -20,7 +19,7 @@ class RxBlePluginCallDispatcher(
     p: PermissionInterface,
     c: ConnectInterface,
     s: ScanInterface
-) : MethodCallDispatcher(), PermissionInterface by p, ConnectInterface by c, ScanInterface by s {
+) : PermissionInterface by p, ConnectInterface by c, ScanInterface by s {
     init {
         RxJavaPlugins.setErrorHandler { error ->
             if (error is UndeliverableException && error.cause is BleException) {
@@ -36,7 +35,6 @@ class RxBlePlugin {
     companion object {
         @JvmStatic
         fun registerWith(registrar: Registrar) {
-            val channel = MethodChannel(registrar.messenger(), PKG_NAME)
             val messenger = registrar.messenger()
             val bleClient = RxBleClient.create(registrar.context())!!
 
@@ -44,7 +42,9 @@ class RxBlePlugin {
             val c = ConnectMethods(messenger)
             val s = ScanMethods(messenger, bleClient, c)
 
-            channel.setMethodCallHandler(
+            createMethodChannel(
+                PKG_NAME,
+                registrar.messenger(),
                 RxBlePluginCallDispatcher(p, c, s)
             )
         }
@@ -116,33 +116,5 @@ class RxBlePlugin {
 //     }
 //
 //
-//     fun <T> subscribeAndSendResult(observable: Single<T>, result: Result) {
-//         observable.run {
-//             subscribe(
-//                 { trySend(result) { it } },
-//                 { trySendThrowable(result, it) }
-//             )
-//         }
-//     }
 //
-//     fun readChar(call: MethodCall, result: Result) {
-//         val macAddress = call.argument<String>("macAddress")!!
-//         val uuid = UUID.fromString(call.argument<String>("uuid")!!)
-//         val connection = getBleConnection(macAddress)
-//         subscribeAndSendResult(connection.readCharacteristic(uuid), result)
-//     }
-//
-//     fun writeChar(call: MethodCall, result: Result) {
-//         val macAddress = call.argument<String>("macAddress")!!
-//         val uuid = UUID.fromString(call.argument<String>("uuid")!!)
-//         val value = call.argument<ByteArray>("value")!!
-//         val connection = getBleConnection(macAddress)
-//         subscribeAndSendResult(connection.writeCharacteristic(uuid, value), result)
-//     }
-//
-//     fun requestMtu(call: MethodCall, result: Result) {
-//         val macAddress = call.argument<String>("macAddress")!!
-//         val value = call.argument<Int>("value")!!
-//         val connection = getBleConnection(macAddress)
-//         subscribeAndSendResult(connection.requestMtu(value), result)
-//     }
+

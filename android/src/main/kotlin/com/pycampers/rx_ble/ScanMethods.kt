@@ -3,9 +3,9 @@ package com.pycampers.rx_ble
 import com.polidea.rxandroidble2.RxBleClient
 import com.polidea.rxandroidble2.scan.ScanFilter
 import com.polidea.rxandroidble2.scan.ScanSettings
-import com.pycampers.method_call_dispatcher.catchErrors
-import com.pycampers.method_call_dispatcher.trySend
-import com.pycampers.method_call_dispatcher.trySendThrowable
+import com.pycampers.plugin_scaffold.catchErrors
+import com.pycampers.plugin_scaffold.trySend
+import com.pycampers.plugin_scaffold.trySendThrowable
 import dumpScanResult
 import io.flutter.plugin.common.BinaryMessenger
 import io.flutter.plugin.common.EventChannel

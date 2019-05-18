@@ -18,12 +18,12 @@ export 'package:rx_ble/src/models.dart';
 /// asking the user for permission or not.
 typedef Future<bool> ShowLocationPermissionRationale();
 
-const PKG_NAME = "com.pycampers.rx_ble";
+const pkgName = "com.pycampers.rx_ble";
 
 class RxBle {
-  static const channel = MethodChannel(PKG_NAME);
-  static const scanChannel = EventChannel('$PKG_NAME/scan');
-  static const connectChannel = EventChannel('$PKG_NAME/connect');
+  static const channel = MethodChannel(pkgName);
+  static const scanChannel = EventChannel('$pkgName/scan');
+  static const connectChannel = EventChannel('$pkgName/connect');
 
   static Future<dynamic> invokeMethod(String method, [args]) async {
     try {
