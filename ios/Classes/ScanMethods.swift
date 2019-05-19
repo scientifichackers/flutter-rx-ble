@@ -27,7 +27,7 @@ class ScanMethods: NSObject, FlutterStreamHandler {
         eventSink = nil
     }
 
-    func startScan(_ macAddress: String?, _ name: String?, _ events: @escaping FlutterEventSink) {
+    func startScan(_ deviceId: String?, _ deviceName: String?, _ events: @escaping FlutterEventSink) {
         _stopScan()
 
         disposable = ScanMethods.manager.scanForPeripherals(withServices: nil).subscribe({ item in
@@ -35,7 +35,12 @@ class ScanMethods: NSObject, FlutterStreamHandler {
                 if let error = item.error {
                     throw error
                 }
-                return nil
+                return [
+                    item.element?.peripheral.name,
+                    item.element?.peripheral.identifier.uuidString,
+                    item.element?.rssi,
+                    Int(Date().timeIntervalSince1970 * 1000)
+                ]
             }
         })
 
@@ -45,7 +50,7 @@ class ScanMethods: NSObject, FlutterStreamHandler {
     func onListen(withArguments arguments: Any?, eventSink events: @escaping FlutterEventSink) -> FlutterError? {
         catchErrors(events, {
             let map = arguments as! [String: Any?]
-            self.startScan(map["macAddress"] as! String?, map["name"] as! String?, events)
+            self.startScan(map["deviceId"] as! String?, map["deviceName"] as! String?, events)
         })
         return nil
     }

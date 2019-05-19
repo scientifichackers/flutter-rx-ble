@@ -64,7 +64,7 @@ class MyApp extends StatefulWidget {
 
 class _MyAppState extends State<MyApp> {
   var returnValue;
-  String macAddress;
+  String deviceId;
   Exception returnError;
   final results = <String, ScanResult>{};
   final uuidControl = TextEditingController(
@@ -116,7 +116,7 @@ class _MyAppState extends State<MyApp> {
 
   Future<void> startScan() async {
     await for (final scanResult in RxBle.startScan()) {
-      results[scanResult.macAddress] = scanResult;
+      results[scanResult.deviceId] = scanResult;
       if (!mounted) return;
       setState(() {
         returnValue = JsonEncoder.withIndent(" " * 2, (o) {
@@ -131,27 +131,27 @@ class _MyAppState extends State<MyApp> {
   }
 
   Future<void> readChar() async {
-    final value = await RxBle.readChar(macAddress, uuidControl.text);
+    final value = await RxBle.readChar(deviceId, uuidControl.text);
     return value.toString() + "\n\n" + utf8.decode(value);
   }
 
   Future<void> writeChar() async {
     return await RxBle.writeChar(
-      macAddress,
+      deviceId,
       uuidControl.text,
       utf8.encode(writeCharValueControl.text),
     );
   }
 
   Future<void> requestMtu() async {
-    return await RxBle.requestMtu(macAddress, int.parse(mtuControl.text));
+    return await RxBle.requestMtu(deviceId, int.parse(mtuControl.text));
   }
 
   Future<void> randomWrite() async {
     final rand = new Random();
     final futures = List.generate(int.parse(randomWriteNum.text), (_) {
       return RxBle.writeChar(
-        macAddress,
+        deviceId,
         uuidControl.text,
         Uint8List.fromList(
           List.generate(int.parse(randomWriteSize.text), (_) {
@@ -169,7 +169,7 @@ class _MyAppState extends State<MyApp> {
   Future<void> continuousRead() async {
     while (true) {
       final start = DateTime.now().millisecondsSinceEpoch;
-      final value = await RxBle.readChar(macAddress, uuidControl.text);
+      final value = await RxBle.readChar(deviceId, uuidControl.text);
       final end = DateTime.now().millisecondsSinceEpoch;
       if (!mounted) return;
       setState(() {
@@ -280,15 +280,15 @@ class _MyAppState extends State<MyApp> {
               for (final scanResult in results.values)
                 RaisedButton(
                   child: Text(
-                    "connect(${scanResult.macAddress})",
+                    "connect(${scanResult.deviceId})",
                     style: TextStyle(fontFamily: 'DejaVuSansMono'),
                   ),
                   onPressed: wrapCall(() async {
                     await RxBle.stopScan();
                     setState(() {
-                      macAddress = scanResult.macAddress;
+                      deviceId = scanResult.deviceId;
                     });
-                    await for (final state in RxBle.connect(macAddress)) {
+                    await for (final state in RxBle.connect(deviceId)) {
                       print("device state: $state");
                       if (!mounted) return;
                       setState(() {

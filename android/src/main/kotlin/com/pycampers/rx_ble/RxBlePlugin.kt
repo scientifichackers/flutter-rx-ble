@@ -60,8 +60,8 @@ class RxBlePlugin {
 //
 //
 //
-//     fun getNotificationKey(macAddress: String, uuid: UUID): String {
-//         return "$macAddress:$uuid"
+//     fun getNotificationKey(deviceId: String, uuid: UUID): String {
+//         return "$deviceId:$uuid"
 //     }
 //
 //     fun stopScan() {
@@ -80,11 +80,11 @@ class RxBlePlugin {
 //         notificationEventStore.remove(key)
 //     }
 //
-//     fun startNotification(macAddress: String, uuid: UUID, eventSink: EventSink) {
-//         val key = getNotificationKey(macAddress, uuid)
+//     fun startNotification(deviceId: String, uuid: UUID, eventSink: EventSink) {
+//         val key = getNotificationKey(deviceId, uuid)
 //         stopNotification(key)
 //
-//         notificationDisposableStore[key] = getBleConnection(macAddress).setupNotification(uuid)
+//         notificationDisposableStore[key] = getBleConnection(deviceId).setupNotification(uuid)
 //             .subscribe(
 //                 { trySend(eventSink) { it.all() } },
 //                 { trySendThrowable(eventSink, it) }
@@ -99,17 +99,17 @@ class RxBlePlugin {
 //             override fun onListen(_args: Any?, eventSink: EventSink) {
 //                 catchErrors(eventSink) {
 //                     val args = _args as Map<*, *>
-//                     val macAddress = args["macAddress"] as String
+//                     val deviceId = args["deviceId"] as String
 //                     val uuid = UUID.fromString(args["uuid"] as String)
-//                     startNotification(macAddress, uuid, eventSink)
+//                     startNotification(deviceId, uuid, eventSink)
 //                 }
 //             }
 //
 //             override fun onCancel(_args: Any?) {
 //                 val args = _args as Map<*, *>
-//                 val macAddress = args["macAddress"] as String
+//                 val deviceId = args["deviceId"] as String
 //                 val uuid = UUID.fromString(args["uuid"] as String)
-//                 val key = getNotificationKey(macAddress, uuid)
+//                 val key = getNotificationKey(deviceId, uuid)
 //                 stopNotification(key)
 //             }
 //         })

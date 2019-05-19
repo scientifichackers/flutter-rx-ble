@@ -54,18 +54,18 @@ enum ScanCallbackType {
 }
 
 class ScanResult {
-  final String name, macAddress;
+  final String name, deviceId;
   final int rssi;
   final DateTime time;
 
   ScanResult.fromJson(List msg)
       : name = msg[0],
-        macAddress = msg[1],
+        deviceId = msg[1],
         rssi = msg[2],
         time = DateTime.fromMillisecondsSinceEpoch(msg[3]);
 
   @override
   String toString() {
-    return "ScanResult { name: $name, macAddress: $macAddress, rssi: $rssi, time: $time }";
+    return "ScanResult { name: $name, deviceId: $deviceId, rssi: $rssi, time: $time }";
   }
 }

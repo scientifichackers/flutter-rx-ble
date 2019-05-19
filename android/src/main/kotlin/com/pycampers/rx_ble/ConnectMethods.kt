@@ -1,4 +1,4 @@
-package com.pycampers.rx_ble
+    package com.pycampers.rx_ble
 
 import com.polidea.rxandroidble2.RxBleConnection
 import com.polidea.rxandroidble2.RxBleDevice
@@ -17,7 +17,7 @@ import java.util.UUID
 
 interface ConnectInterface {
     fun disconnect(call: MethodCall, result: Result)
-    fun getBleConnection(macAddress: String): RxBleConnection
+    fun getBleConnection(deviceId: String): RxBleConnection
     fun getConnectionState(call: MethodCall, result: Result)
     fun readChar(call: MethodCall, result: Result)
     fun writeChar(call: MethodCall, result: Result)
@@ -36,18 +36,18 @@ class ConnectMethods(messenger: BinaryMessenger) : ConnectInterface {
     val channel = EventChannel(messenger, "$PKG_NAME/connect")
     val devices = mutableMapOf<String, DeviceState>()
 
-    fun getBleDevice(macAddress: String): RxBleDevice {
-        return devices[macAddress]?.bleDevice ?: throw IllegalArgumentException(
+    fun getBleDevice(deviceId: String): RxBleDevice {
+        return devices[deviceId]?.bleDevice ?: throw IllegalArgumentException(
             "Device has not been initialized yet. " +
                 "You must call \"startScan()\" and wait for " +
                 "device to appear in ScanResults before accessing the device."
         )
     }
 
-    fun getDeviceState(macAddress: String) = devices.getOrPut(macAddress) { DeviceState() }
+    fun getDeviceState(deviceId: String) = devices.getOrPut(deviceId) { DeviceState() }
 
-    fun disconnect(macAddress: String) {
-        devices[macAddress]?.run {
+    fun disconnect(deviceId: String) {
+        devices[deviceId]?.run {
             connectDisposable?.dispose()
             connectDisposable = null
             stateDisposable?.dispose()
@@ -57,11 +57,11 @@ class ConnectMethods(messenger: BinaryMessenger) : ConnectInterface {
         }
     }
 
-    fun connect(macAddress: String, waitForDevice: Boolean, events: EventSink) {
-        disconnect(macAddress)
+    fun connect(deviceId: String, waitForDevice: Boolean, events: EventSink) {
+        disconnect(deviceId)
 
-        val device = getBleDevice(macAddress)
-        val state = getDeviceState(macAddress)
+        val device = getBleDevice(deviceId)
+        val state = getDeviceState(deviceId)
 
         state.connectDisposable = device.establishConnection(waitForDevice).subscribe(
             { state.bleConnection = it },
@@ -77,22 +77,22 @@ class ConnectMethods(messenger: BinaryMessenger) : ConnectInterface {
             override fun onListen(args: Any?, events: EventSink) {
                 catchErrors(events) {
                     val map = args as Map<*, *>
-                    val macAddress = map["macAddress"] as String
+                    val deviceId = map["deviceId"] as String
                     val waitForDevice = map["waitForDevice"] as Boolean
-                    connect(macAddress, waitForDevice, events)
+                    connect(deviceId, waitForDevice, events)
                 }
             }
 
             override fun onCancel(args: Any?) {
                 val map = args as Map<*, *>
-                val macAddress = map["macAddress"] as String
-                disconnect(macAddress)
+                val deviceId = map["deviceId"] as String
+                disconnect(deviceId)
             }
         })
     }
 
-    override fun getBleConnection(macAddress: String): RxBleConnection {
-        return devices[macAddress]?.bleConnection ?: throw IllegalArgumentException(
+    override fun getBleConnection(deviceId: String): RxBleConnection {
+        return devices[deviceId]?.bleConnection ?: throw IllegalArgumentException(
             "Connection to device has not been initialized yet. " +
                 "You must call \"connect()\" and wait for " +
                 "\"BleConnectionState.connected\" before doing any read/write operation."
@@ -100,9 +100,9 @@ class ConnectMethods(messenger: BinaryMessenger) : ConnectInterface {
     }
 
     override fun disconnect(call: MethodCall, result: Result) {
-        val macAddress = call.arguments as String?
-        if (macAddress != null) {
-            disconnect(macAddress)
+        val deviceId = call.arguments as String?
+        if (deviceId != null) {
+            disconnect(deviceId)
         } else {
             for (it in devices.keys) {
                 disconnect(it)
@@ -112,8 +112,8 @@ class ConnectMethods(messenger: BinaryMessenger) : ConnectInterface {
     }
 
     override fun getConnectionState(call: MethodCall, result: Result) {
-        val macAddress = call.arguments as String
-        result.success(getBleDevice(macAddress).connectionState.ordinal)
+        val deviceId = call.arguments as String
+        result.success(getBleDevice(deviceId).connectionState.ordinal)
     }
 
     fun <T> subscribeAndSendResult(observable: Single<T>, result: Result) {
@@ -126,24 +126,24 @@ class ConnectMethods(messenger: BinaryMessenger) : ConnectInterface {
     }
 
     override fun readChar(call: MethodCall, result: Result) {
-        val macAddress = call.argument<String>("macAddress")!!
+        val deviceId = call.argument<String>("deviceId")!!
         val uuid = UUID.fromString(call.argument<String>("uuid")!!)
-        val connection = getBleConnection(macAddress)
+        val connection = getBleConnection(deviceId)
         subscribeAndSendResult(connection.readCharacteristic(uuid), result)
     }
 
     override fun writeChar(call: MethodCall, result: Result) {
-        val macAddress = call.argument<String>("macAddress")!!
+        val deviceId = call.argument<String>("deviceId")!!
         val uuid = UUID.fromString(call.argument<String>("uuid")!!)
         val value = call.argument<ByteArray>("value")!!
-        val connection = getBleConnection(macAddress)
+        val connection = getBleConnection(deviceId)
         subscribeAndSendResult(connection.writeCharacteristic(uuid, value), result)
     }
 
     override fun requestMtu(call: MethodCall, result: Result) {
-        val macAddress = call.argument<String>("macAddress")!!
+        val deviceId = call.argument<String>("deviceId")!!
         val value = call.argument<Int>("value")!!
-        val connection = getBleConnection(macAddress)
+        val connection = getBleConnection(deviceId)
         subscribeAndSendResult(connection.requestMtu(value), result)
     }
 }

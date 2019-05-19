@@ -88,12 +88,12 @@ class RxBle {
   static Stream<ScanResult> startScan({
     ScanModes scanMode: ScanModes.lowPower,
     String name,
-    String macAddress,
+    String deviceId,
   }) {
     return scanChannel.receiveBroadcastStream({
       "scanMode": scanMode.index,
       "name": name,
-      "macAddress": macAddress,
+      "deviceId": deviceId,
     }).map((event) {
       return ScanResult.fromJson(event);
     }).handleError((e) {
@@ -107,13 +107,13 @@ class RxBle {
   }
 
   static Future<BleConnectionState> getConnectionState(
-    String macAddress,
+    String deviceId,
   ) async {
     return BleConnectionState
-        .values[await RxBle.invokeMethod("getConnectionState", macAddress)];
+        .values[await RxBle.invokeMethod("getConnectionState", deviceId)];
   }
 
-  /// Establish connection to the BLE device identified by [macAddress]
+  /// Establish connection to the BLE device identified by [deviceId]
   /// and emit the [BleConnectionState] changes.
   ///
   ///
@@ -136,30 +136,30 @@ class RxBle {
   /// or by calling [disconnect].
   ///
   /// [autoConnect] will catch [BleDisconnectedException],
-  /// do a scan for the [macAddress], and connect automatically in background.
+  /// do a scan for the [deviceId], and connect automatically in background.
   ///
   ///
   /// It is mandatory that you perform a scan before issuing a connect request.
   /// In cases where the caller hasn't done a scan,
-  /// and is loading the [macAddress] from say, local storage, the connect will fail.
+  /// and is loading the [deviceId] from say, local storage, the connect will fail.
   /// This can usually be solved using some simple dart [Stream] methods :-
   ///
   /// ```dart
-  /// final scanResult = await RxBle.startScan(macAddress: "XX:XX:XX:XX:XX:XX")
+  /// final scanResult = await RxBle.startScan(deviceId: "XX:XX:XX:XX:XX:XX")
   ///   .timeout(Duration(seconds: 5))
   ///   .first;
   /// ```
   ///
   /// This is done automatically when [autoConnect] is enabled.
   static Stream<BleConnectionState> connect(
-    String macAddress, {
+    String deviceId, {
     bool waitForDevice: false,
     bool autoConnect: false,
     ScanModes scanMode: ScanModes.lowPower,
   }) async* {
     Future<void> doScan() async {
       final scanStream =
-          RxBle.startScan(macAddress: macAddress, scanMode: scanMode);
+          RxBle.startScan(deviceId: deviceId, scanMode: scanMode);
       await for (final _ in scanStream) break;
     }
 
@@ -169,7 +169,7 @@ class RxBle {
       }
 
       final stream = RxBle.connectChannel.receiveBroadcastStream({
-        "macAddress": macAddress,
+        "deviceId": deviceId,
         "waitForDevice": waitForDevice,
       }).map((it) {
         return BleConnectionState.values[it];
@@ -192,12 +192,12 @@ class RxBle {
     }
   }
 
-  /// Disconnect with the device with [macAddress].
+  /// Disconnect with the device with [deviceId].
   ///
-  /// If [macAddress] is not provided,
+  /// If [deviceId] is not provided,
   /// then all previously connected devices are disconnected.
-  static Future<void> disconnect({String macAddress}) async {
-    await RxBle.invokeMethod("disconnect", macAddress);
+  static Future<void> disconnect({String deviceId}) async {
+    await RxBle.invokeMethod("disconnect", deviceId);
   }
 
   /// Performs GATT read operation on a characteristic with given [uuid].
@@ -206,9 +206,9 @@ class RxBle {
   ///   - [BleCharacteristicNotFoundException]
   ///   - [BleGattCannotStartException]
   ///   - [BleGattException].
-  static Future<Uint8List> readChar(String macAddress, String uuid) async {
+  static Future<Uint8List> readChar(String deviceId, String uuid) async {
     return await RxBle.invokeMethod("readChar", {
-      "macAddress": macAddress,
+      "deviceId": deviceId,
       "uuid": uuid,
     });
   }
@@ -220,12 +220,12 @@ class RxBle {
   ///   - [BleGattCannotStartException]
   ///   - [BleGattException].
   static Future<Uint8List> writeChar(
-    String macAddress,
+    String deviceId,
     String uuid,
     Uint8List value,
   ) async {
     return await RxBle.invokeMethod("writeChar", {
-      "macAddress": macAddress,
+      "deviceId": deviceId,
       "uuid": uuid,
       "value": value,
     });
@@ -238,9 +238,9 @@ class RxBle {
   /// Throws the following errors:
   ///   - [BleGattCannotStartException]
   ///   - [BleGattException]
-  static Future<int> requestMtu(String macAddress, int value) async {
+  static Future<int> requestMtu(String deviceId, int value) async {
     return await RxBle.invokeMethod("requestMtu", {
-      "macAddress": macAddress,
+      "deviceId": deviceId,
       "value": value,
     });
   }

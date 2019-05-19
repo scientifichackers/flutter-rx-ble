@@ -56,7 +56,7 @@ class ScanMethods(messenger: BinaryMessenger, val bleClient: RxBleClient, val co
                     val map = args as Map<*, *>
                     val scanSettings = ScanSettings.Builder().setScanMode(map["scanMode"] as Int - 1).build()
                     val filter = ScanFilter.Builder()
-                    (map["macAddress"] as String?)?.let { filter.setDeviceAddress(it) }
+                    (map["deviceId"] as String?)?.let { filter.setDeviceAddress(it) }
                     (map["name"] as String?)?.let { filter.setDeviceName(it) }
                     startScan(scanSettings, filter.build(), events)
                 }
