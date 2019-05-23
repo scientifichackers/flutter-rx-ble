@@ -3,21 +3,18 @@
 //
 
 import Foundation
+import plugin_scaffold
 import RxBluetoothKit
 import RxSwift
-import plugin_scaffold
 
 class ScanMethods: NSObject, FlutterStreamHandler {
-    static let manager = CentralManager(queue: .main)
-
-    let channel: FlutterEventChannel
+    let manager: CentralManager
     var disposable: Disposable?
     var eventSink: FlutterEventSink?
 
-    init(_ messenger: FlutterBinaryMessenger) {
-        channel = FlutterEventChannel(name: pkgName + "/scan", binaryMessenger: messenger)
+    init(_ manager: CentralManager) {
+        self.manager = manager
         super.init()
-        channel.setStreamHandler(self)
     }
 
     func _stopScan() {
@@ -27,41 +24,52 @@ class ScanMethods: NSObject, FlutterStreamHandler {
         eventSink = nil
     }
 
-    func startScan(_ deviceId: String?, _ deviceName: String?, _ events: @escaping FlutterEventSink) {
+    func startScan(_ deviceIdFilter: String?, _ deviceNameFilter: String?, _ eventSink: @escaping FlutterEventSink) {
         _stopScan()
 
-        disposable = ScanMethods.manager.scanForPeripherals(withServices: nil).subscribe({ item in
-            trySend(events) {
-                if let error = item.error {
-                    throw error
+        disposable = manager.scanForPeripherals(withServices: nil).subscribe(
+            onNext: {
+                let peripheral = $0.peripheral
+                let deviceName = peripheral.name
+                let deviceId = peripheral.identifier.uuidString
+                let state = getDeviceState(deviceId)
+                state.peripheral = peripheral
+                if (deviceIdFilter != nil && deviceIdFilter != deviceId)
+                    || (deviceNameFilter != nil && deviceNameFilter != deviceName) {
+                    return
                 }
-                return [
-                    item.element?.peripheral.name,
-                    item.element?.peripheral.identifier.uuidString,
-                    item.element?.rssi,
-                    Int(Date().timeIntervalSince1970 * 1000)
-                ]
-            }
-        })
 
-        eventSink = events
+                eventSink([
+                    deviceName as Any,
+                    deviceId,
+                    $0.rssi as Any,
+                    Int(Date().timeIntervalSince1970 * 1000),
+                ])
+            },
+            onError: {
+                trySendError(eventSink, $0)
+            }
+        )
+
+        self.eventSink = eventSink
     }
 
     func onListen(withArguments arguments: Any?, eventSink events: @escaping FlutterEventSink) -> FlutterError? {
-        catchErrors(events, {
+        catchErrors(events) {
             let map = arguments as! [String: Any?]
-            self.startScan(map["deviceId"] as! String?, map["deviceName"] as! String?, events)
-        })
+            let deviceId = map["deviceId"] as? String
+            let deviceName = map["deviceName"] as? String
+            self.startScan(deviceId, deviceName, events)
+        }
         return nil
     }
 
-    func onCancel(withArguments arguments: Any?) -> FlutterError? {
+    func onCancel(withArguments _: Any?) -> FlutterError? {
         _stopScan()
         return nil
     }
 
-
-    func stopScan(call: FlutterMethodCall, result: @escaping FlutterResult) {
+    func stopScan(call _: FlutterMethodCall, result: @escaping FlutterResult) {
         _stopScan()
         result(nil)
     }

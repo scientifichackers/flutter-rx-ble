@@ -1,19 +1,47 @@
 package com.pycampers.rx_ble
 
-import android.Manifest.permission.ACCESS_COARSE_LOCATION
 import com.polidea.rxandroidble2.RxBleClient
+import com.polidea.rxandroidble2.RxBleConnection
+import com.polidea.rxandroidble2.RxBleDevice
 import com.polidea.rxandroidble2.exceptions.BleException
-import com.pycampers.plugin_scaffold.createMethodChannel
+import com.pycampers.plugin_scaffold.createPluginScaffold
+import io.flutter.plugin.common.EventChannel
 import io.flutter.plugin.common.PluginRegistry.Registrar
+import io.reactivex.disposables.Disposable
 import io.reactivex.exceptions.UndeliverableException
 import io.reactivex.plugins.RxJavaPlugins
 
-const val REQUEST_ENABLE_BT = 1
-const val REQUEST_ENABLE_LOC = 2
-const val REQUEST_PERM_LOC = 3
-const val LOC_PERM = ACCESS_COARSE_LOCATION
-
 const val PKG_NAME = "com.pycampers.rx_ble"
+
+class DeviceState {
+    var connectDisposable: Disposable? = null
+    var stateDisposable: Disposable? = null
+    var eventSink: EventChannel.EventSink? = null
+    var bleDevice: RxBleDevice? = null
+    var bleConnection: RxBleConnection? = null
+}
+
+val devices = mutableMapOf<String, DeviceState>()
+
+fun getBleDevice(deviceId: String): RxBleDevice {
+    return devices[deviceId]?.bleDevice ?: throw IllegalArgumentException(
+        "Device has not been initialized yet. " +
+            "You must call \"startScan()\" and wait for " +
+            "device to appear in ScanResults before accessing the device."
+    )
+}
+
+fun getDeviceState(deviceId: String): DeviceState {
+    return devices.getOrPut(deviceId) { DeviceState() }
+}
+
+fun getBleConnection(deviceId: String): RxBleConnection {
+    return devices[deviceId]?.bleConnection ?: throw IllegalArgumentException(
+        "Connection to device has not been initialized yet. " +
+            "You must call \"connect()\" and wait for " +
+            "\"BleConnectionState.connected\" before doing any read/write operation."
+    )
+}
 
 class RxBlePluginCallDispatcher(
     p: PermissionInterface,
@@ -35,86 +63,23 @@ class RxBlePlugin {
     companion object {
         @JvmStatic
         fun registerWith(registrar: Registrar) {
-            val messenger = registrar.messenger()
             val bleClient = RxBleClient.create(registrar.context())!!
 
-            val p = PermissionMethods(registrar)
-            val c = ConnectMethods(messenger)
-            val s = ScanMethods(messenger, bleClient, c)
+            val permissionMethods = PermissionMethods(registrar)
+            val connectMethods = ConnectMethods()
+            val scanMethods = ScanMethods(bleClient)
+            val notifyMethods = NotifyMethods()
 
-            createMethodChannel(
+            createPluginScaffold(
                 PKG_NAME,
                 registrar.messenger(),
-                RxBlePluginCallDispatcher(p, c, s)
+                RxBlePluginCallDispatcher(permissionMethods, connectMethods, scanMethods),
+                mapOf(
+                    "notify" to notifyMethods,
+                    "connect" to connectMethods,
+                    "scan" to scanMethods
+                )
             )
         }
     }
 }
-//     val notificationChannel = EventChannel(registrar.messenger(), "$PKG_NAME/notification")
-//
-//     var scanDisposable: Disposable? = null
-//     var notificationDisposableStore = mutableMapOf<String, Disposable>()
-//
-//     var scanEvents: EventSink? = null
-//     var notificationEventStore = mutableMapOf<String, EventSink>()
-//
-//
-//
-//     fun getNotificationKey(deviceId: String, uuid: UUID): String {
-//         return "$deviceId:$uuid"
-//     }
-//
-//     fun stopScan() {
-//         scanDisposable?.dispose()
-//         scanDisposable = null
-//         scanEvents?.endOfStream()
-//         scanEvents = null
-//     }
-//
-//
-//     fun stopNotification(key: String) {
-//         notificationDisposableStore[key]?.dispose()
-//         notificationDisposableStore.remove(key)
-//
-//         notificationEventStore[key]?.endOfStream()
-//         notificationEventStore.remove(key)
-//     }
-//
-//     fun startNotification(deviceId: String, uuid: UUID, eventSink: EventSink) {
-//         val key = getNotificationKey(deviceId, uuid)
-//         stopNotification(key)
-//
-//         notificationDisposableStore[key] = getBleConnection(deviceId).setupNotification(uuid)
-//             .subscribe(
-//                 { trySend(eventSink) { it.all() } },
-//                 { trySendThrowable(eventSink, it) }
-//             )
-//
-//         notificationEventStore[key] = eventSink
-//     }
-//
-//     init {
-//
-//         notificationChannel.setStreamHandler(object : StreamHandler {
-//             override fun onListen(_args: Any?, eventSink: EventSink) {
-//                 catchErrors(eventSink) {
-//                     val args = _args as Map<*, *>
-//                     val deviceId = args["deviceId"] as String
-//                     val uuid = UUID.fromString(args["uuid"] as String)
-//                     startNotification(deviceId, uuid, eventSink)
-//                 }
-//             }
-//
-//             override fun onCancel(_args: Any?) {
-//                 val args = _args as Map<*, *>
-//                 val deviceId = args["deviceId"] as String
-//                 val uuid = UUID.fromString(args["uuid"] as String)
-//                 val key = getNotificationKey(deviceId, uuid)
-//                 stopNotification(key)
-//             }
-//         })
-//     }
-//
-//
-//
-

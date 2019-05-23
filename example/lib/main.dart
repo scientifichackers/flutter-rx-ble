@@ -5,6 +5,8 @@ import 'dart:typed_data';
 import 'package:flutter/material.dart';
 import 'package:rx_ble/rx_ble.dart';
 
+int time() => DateTime.now().millisecondsSinceEpoch;
+
 void main() {
   runApp(
     MaterialApp(
@@ -67,9 +69,8 @@ class _MyAppState extends State<MyApp> {
   String deviceId;
   Exception returnError;
   final results = <String, ScanResult>{};
-  final uuidControl = TextEditingController(
-    text: "0000ff04-0000-1000-8000-00805f9b34fb",
-  );
+  var chars = Map<String, List<String>>();
+  final uuidControl = TextEditingController();
   final mtuControl = TextEditingController();
   final writeCharValueControl = TextEditingController();
   final randomWriteNum = TextEditingController(text: '100');
@@ -130,16 +131,42 @@ class _MyAppState extends State<MyApp> {
     }
   }
 
+  Future<String> discoverChars() async {
+    final value = await RxBle.discoverChars(deviceId);
+    if (!mounted) return null;
+    setState(() {
+      chars = value;
+    });
+    return JsonEncoder.withIndent(" " * 2).convert(chars);
+  }
+
   Future<void> readChar() async {
     final value = await RxBle.readChar(deviceId, uuidControl.text);
-    return value.toString() + "\n\n" + utf8.decode(value);
+    return value.toString() +
+        "\n\n" +
+        RxBle.charToString(value, allowMalformed: true);
+  }
+
+  Future<void> observeChar() async {
+    var start = time();
+    await for (final value in RxBle.observeChar(deviceId, uuidControl.text)) {
+      final end = time();
+      if (!mounted) return;
+      setState(() {
+        returnValue = value.toString() +
+            "\n\n" +
+            RxBle.charToString(value, allowMalformed: true) +
+            "\n\nDelay: ${(end - start)} ms";
+      });
+      start = time();
+    }
   }
 
   Future<void> writeChar() async {
     return await RxBle.writeChar(
       deviceId,
       uuidControl.text,
-      utf8.encode(writeCharValueControl.text),
+      RxBle.stringToChar(writeCharValueControl.text),
     );
   }
 
@@ -160,24 +187,23 @@ class _MyAppState extends State<MyApp> {
         ),
       );
     });
-    final start = DateTime.now().millisecondsSinceEpoch;
+    final start = time();
     await Future.wait(futures);
-    final end = DateTime.now().millisecondsSinceEpoch;
+    final end = time();
     return "${end - start} ms";
   }
 
   Future<void> continuousRead() async {
     while (true) {
-      final start = DateTime.now().millisecondsSinceEpoch;
+      final start = time();
       final value = await RxBle.readChar(deviceId, uuidControl.text);
-      final end = DateTime.now().millisecondsSinceEpoch;
+      final end = time();
       if (!mounted) return;
       setState(() {
         returnValue = value.toString() +
             "\n\n" +
-            utf8.decode(value) +
-            "\n\n" +
-            "Delay: ${start - end} ms";
+            RxBle.charToString(value, allowMalformed: true) +
+            "\n\nDelay: ${start - end} ms";
       });
     }
   }
@@ -303,13 +329,31 @@ class _MyAppState extends State<MyApp> {
               else ...[
                 RaisedButton(
                   child: Text(
+                    "discoverChars()",
+                    style: TextStyle(fontFamily: 'DejaVuSansMono'),
+                  ),
+                  onPressed: wrapCall(discoverChars),
+                ),
+                RaisedButton(
+                  child: Text(
                     "disconnect()",
                     style: TextStyle(fontFamily: 'DejaVuSansMono'),
                   ),
-                  onPressed: wrapCall(() async {
-                    await RxBle.disconnect();
-                  }),
+                  onPressed: wrapCall(RxBle.disconnect),
                 ),
+                Divider(),
+                if (chars.isNotEmpty) Text("Characteristic Picker"),
+                for (final i in chars.values)
+                  for (final j in i)
+                    RaisedButton(
+                      child: Text(j),
+                      onPressed: () {
+                        setState(() {
+                          uuidControl.text = j;
+                        });
+                      },
+                    ),
+                Divider(),
                 TextField(
                   controller: uuidControl,
                   decoration: InputDecoration(
@@ -322,6 +366,13 @@ class _MyAppState extends State<MyApp> {
                     style: TextStyle(fontFamily: 'DejaVuSansMono'),
                   ),
                   onPressed: wrapCall(readChar),
+                ),
+                RaisedButton(
+                  child: Text(
+                    "device.observeChar()",
+                    style: TextStyle(fontFamily: 'DejaVuSansMono'),
+                  ),
+                  onPressed: wrapCall(observeChar),
                 ),
                 TextField(
                   controller: writeCharValueControl,

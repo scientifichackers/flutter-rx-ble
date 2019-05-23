@@ -70,9 +70,9 @@ packages:
   plugin_scaffold:
     dependency: "direct main"
     description:
-      path: "../flutter-plugin-scaffold"
-      relative: true
-    source: path
+      name: plugin_scaffold
+      url: "https://pub.dartlang.org"
+    source: hosted
     version: "0.0.1"
   quiver:
     dependency: transitive

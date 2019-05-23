@@ -24,6 +24,7 @@ class RxBle {
   static const channel = MethodChannel(pkgName);
   static const scanChannel = EventChannel('$pkgName/scan');
   static const connectChannel = EventChannel('$pkgName/connect');
+  static const notifyChannel = EventChannel('$pkgName/notify');
 
   static Future<dynamic> invokeMethod(String method, [args]) async {
     try {
@@ -87,12 +88,12 @@ class RxBle {
   /// or by calling [stopScan].
   static Stream<ScanResult> startScan({
     ScanModes scanMode: ScanModes.lowPower,
-    String name,
+    String deviceName,
     String deviceId,
   }) {
     return scanChannel.receiveBroadcastStream({
       "scanMode": scanMode.index,
-      "name": name,
+      "deviceName": deviceName,
       "deviceId": deviceId,
     }).map((event) {
       return ScanResult.fromJson(event);
@@ -168,7 +169,7 @@ class RxBle {
         await doScan();
       }
 
-      final stream = RxBle.connectChannel.receiveBroadcastStream({
+      final stream = connectChannel.receiveBroadcastStream({
         "deviceId": deviceId,
         "waitForDevice": waitForDevice,
       }).map((it) {
@@ -200,6 +201,17 @@ class RxBle {
     await RxBle.invokeMethod("disconnect", deviceId);
   }
 
+  static Future<Map<String, List<String>>> discoverChars(
+    String deviceId,
+  ) async {
+    final value = await RxBle.invokeMethod("discoverChars", deviceId);
+    return Map<String, List<String>>.from(
+      value.map((k, v) {
+        return MapEntry(k, List<String>.from(v));
+      }),
+    );
+  }
+
   /// Performs GATT read operation on a characteristic with given [uuid].
   ///
   /// Throws the following errors:
@@ -210,6 +222,19 @@ class RxBle {
     return await RxBle.invokeMethod("readChar", {
       "deviceId": deviceId,
       "uuid": uuid,
+    });
+  }
+
+  /// Set up BLE notifications,
+  /// and emit the changes in the characteristic with the given [uuid].
+  static Stream<Uint8List> observeChar(String deviceId, String uuid) {
+    return notifyChannel.receiveBroadcastStream({
+      "deviceId": deviceId,
+      "uuid": uuid,
+    }).map((it) {
+      return it as Uint8List;
+    }).handleError((e) {
+      rethrowException(e);
     });
   }
 
@@ -247,8 +272,13 @@ class RxBle {
 
   /// Converts characteristic value returned by [readChar] into utf-8 [String],
   /// By removing zeros (null value) and trimming leading and trailing whitespace.
-  static String charToString(Uint8List value) {
-    return utf8.decode(value.where((it) => it != 0).toList()).trim();
+  static String charToString(Uint8List value, {bool allowMalformed: false}) {
+    return utf8
+        .decode(
+          value.where((it) => it != 0).toList(),
+          allowMalformed: allowMalformed,
+        )
+        .trim();
   }
 
   /// Converts utf-8 string to  characteristic value

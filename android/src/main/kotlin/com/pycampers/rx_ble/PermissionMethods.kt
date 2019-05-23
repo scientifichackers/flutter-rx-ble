@@ -1,5 +1,6 @@
 package com.pycampers.rx_ble
 
+import android.Manifest
 import android.app.Activity
 import android.bluetooth.BluetoothAdapter
 import android.bluetooth.BluetoothManager
@@ -26,6 +27,11 @@ import io.flutter.plugin.common.PluginRegistry.ActivityResultListener
 import io.flutter.plugin.common.PluginRegistry.RequestPermissionsResultListener
 import java.util.ArrayDeque
 import java.util.NoSuchElementException
+
+const val REQUEST_ENABLE_BT = 1
+const val REQUEST_ENABLE_LOC = 2
+const val REQUEST_PERM_LOC = 3
+const val LOC_PERM = Manifest.permission.ACCESS_COARSE_LOCATION
 
 enum class AccessStatus {
     OK, BT_DISABLED, LOC_DISABLED, LOC_DENIED, LOC_DENIED_NEVER_ASK_AGAIN, LOC_DENIED_SHOW_PERM_RATIONALE,
