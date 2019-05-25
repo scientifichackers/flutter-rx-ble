@@ -38,14 +38,14 @@ class RxBle {
 
   static String encodeUUID(String uuid) {
     if (Platform.isAndroid && uuid.length == 4) {
-      return "0000$uuid-0000-1000-8000-00805f9b34fb";
+      return "0000${uuid.toLowerCase()}-0000-1000-8000-00805f9b34fb";
     }
     return uuid;
   }
 
   static String decodeUUID(String uuid) {
     if (Platform.isAndroid) {
-      return uuidRegex.firstMatch(uuid)?.group(2) ?? uuid;
+      return uuidRegex.firstMatch(uuid)?.group(2)?.toUpperCase() ?? uuid;
     }
     return uuid;
   }
@@ -224,7 +224,7 @@ class RxBle {
     return Map<String, List<String>>.from(
       value.map((k, v) {
         return MapEntry(
-          k,
+          decodeUUID(k),
           List<String>.from(
             v.map((it) {
               return decodeUUID(it);

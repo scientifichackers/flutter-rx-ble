@@ -1,6 +1,6 @@
 name: rx_ble
 description: A Flutter BLE plugin, based on RxAndroidBle and RxBluetoothKit.
-version: 0.5.0
+version: 0.5.1
 author: Dev Aggarwal <devpxy@gmail.com>
 homepage: https://github.com/pycampers/flutter-rx-ble
 
@@ -11,7 +11,7 @@ dependencies:
   flutter:
     sdk: flutter
 
-  plugin_scaffold: ^1.0.0
+  plugin_scaffold: ^1.0.1
 
 dev_dependencies:
   flutter_test:
