@@ -43,9 +43,11 @@
 		<string>UIInterfaceOrientationLandscapeLeft</string>
 		<string>UIInterfaceOrientationLandscapeRight</string>
 	</array>
-	<key>NSLocationWhenInUseUsageDescription</key>
-	<string>Please enable location to continue.</string>
 	<key>UIViewControllerBasedStatusBarAppearance</key>
 	<false/>
+	<key>NSLocationWhenInUseUsageDescription</key>
+	<string>Please enable location to continue.</string>
+	<key>NSBluetoothPeripheralUsageDescription</key>
+	<string>Please enable bluetooth to continue.</string>
 </dict>
 </plist>

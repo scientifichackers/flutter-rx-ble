@@ -1,8 +1,10 @@
 import 'dart:async';
 import 'dart:convert';
+import 'dart:io';
 import 'dart:typed_data';
 
 import 'package:flutter/services.dart';
+import 'package:plugin_scaffold/plugin_scaffold.dart';
 import 'package:rx_ble/src/exception_serializer.dart';
 import 'package:rx_ble/src/exceptions.dart';
 import 'package:rx_ble/src/models.dart';
@@ -18,20 +20,34 @@ export 'package:rx_ble/src/models.dart';
 /// asking the user for permission or not.
 typedef Future<bool> ShowLocationPermissionRationale();
 
-const pkgName = "com.pycampers.rx_ble";
-
 class RxBle {
+  static const pkgName = "com.pycampers.rx_ble";
   static const channel = MethodChannel(pkgName);
-  static const scanChannel = EventChannel('$pkgName/scan');
-  static const connectChannel = EventChannel('$pkgName/connect');
-  static const notifyChannel = EventChannel('$pkgName/notify');
 
-  static Future<dynamic> invokeMethod(String method, [args]) async {
+  static Future<dynamic> invokeMethod(String method, [dynamic args]) async {
     try {
       return await channel.invokeMethod(method, args);
-    } on PlatformException catch (e) {
+    } catch (e) {
       rethrowException(e);
     }
+  }
+
+  static final uuidRegex = RegExp(
+    '(0000)([0-9A-z]{4})(-0000-1000-8000-00805f9b34fb)',
+  );
+
+  static String encodeUUID(String uuid) {
+    if (Platform.isAndroid && uuid.length == 4) {
+      return "0000$uuid-0000-1000-8000-00805f9b34fb";
+    }
+    return uuid;
+  }
+
+  static String decodeUUID(String uuid) {
+    if (Platform.isAndroid) {
+      return uuidRegex.firstMatch(uuid)?.group(2) ?? uuid;
+    }
+    return uuid;
   }
 
   /// Check if the app has all the necessary permissions, settings, etc.
@@ -91,7 +107,7 @@ class RxBle {
     String deviceName,
     String deviceId,
   }) {
-    return scanChannel.receiveBroadcastStream({
+    return PluginScaffold.createStream(channel, "scan", {
       "scanMode": scanMode.index,
       "deviceName": deviceName,
       "deviceId": deviceId,
@@ -169,7 +185,7 @@ class RxBle {
         await doScan();
       }
 
-      final stream = connectChannel.receiveBroadcastStream({
+      final stream = PluginScaffold.createStream(channel, "connect", {
         "deviceId": deviceId,
         "waitForDevice": waitForDevice,
       }).map((it) {
@@ -207,7 +223,14 @@ class RxBle {
     final value = await RxBle.invokeMethod("discoverChars", deviceId);
     return Map<String, List<String>>.from(
       value.map((k, v) {
-        return MapEntry(k, List<String>.from(v));
+        return MapEntry(
+          k,
+          List<String>.from(
+            v.map((it) {
+              return decodeUUID(it);
+            }),
+          ),
+        );
       }),
     );
   }
@@ -221,16 +244,16 @@ class RxBle {
   static Future<Uint8List> readChar(String deviceId, String uuid) async {
     return await RxBle.invokeMethod("readChar", {
       "deviceId": deviceId,
-      "uuid": uuid,
+      "uuid": encodeUUID(uuid),
     });
   }
 
   /// Set up BLE notifications,
   /// and emit the changes in the characteristic with the given [uuid].
   static Stream<Uint8List> observeChar(String deviceId, String uuid) {
-    return notifyChannel.receiveBroadcastStream({
+    return PluginScaffold.createStream(channel, "observeChar", {
       "deviceId": deviceId,
-      "uuid": uuid,
+      "uuid": encodeUUID(uuid),
     }).map((it) {
       return it as Uint8List;
     }).handleError((e) {
@@ -251,7 +274,7 @@ class RxBle {
   ) async {
     return await RxBle.invokeMethod("writeChar", {
       "deviceId": deviceId,
-      "uuid": uuid,
+      "uuid": encodeUUID(uuid),
       "value": value,
     });
   }

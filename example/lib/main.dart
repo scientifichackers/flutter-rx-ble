@@ -343,16 +343,26 @@ class _MyAppState extends State<MyApp> {
                 ),
                 Divider(),
                 if (chars.isNotEmpty) Text("Characteristic Picker"),
-                for (final i in chars.values)
-                  for (final j in i)
-                    RaisedButton(
-                      child: Text(j),
-                      onPressed: () {
-                        setState(() {
-                          uuidControl.text = j;
-                        });
-                      },
-                    ),
+                SingleChildScrollView(
+                  scrollDirection: Axis.horizontal,
+                  child: Row(
+                    children: <Widget>[
+                      for (final i in chars.values)
+                        for (final j in i)
+                          Padding(
+                            padding: EdgeInsets.all(5),
+                            child: RaisedButton(
+                              child: Text(j),
+                              onPressed: () {
+                                setState(() {
+                                  uuidControl.text = j;
+                                });
+                              },
+                            ),
+                          ),
+                    ],
+                  ),
+                ),
                 Divider(),
                 TextField(
                   controller: uuidControl,

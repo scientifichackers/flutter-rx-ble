@@ -38,7 +38,7 @@ class PermissionMethods: NSObject, CLLocationManagerDelegate {
         }
     }
 
-    func requestAccess(call _: FlutterMethodCall, result: @escaping FlutterResult) {
+    func requestAccess(call: FlutterMethodCall, result: @escaping FlutterResult) {
         if !CLLocationManager.locationServicesEnabled() {
             result(AccessStatus.locDisabled.rawValue)
             return
@@ -54,7 +54,6 @@ class PermissionMethods: NSObject, CLLocationManagerDelegate {
         default:
             break
         }
-
         if !bluetoothIsOn {
             result(AccessStatus.btDisabled.rawValue)
             return
@@ -62,7 +61,7 @@ class PermissionMethods: NSObject, CLLocationManagerDelegate {
         result(AccessStatus.ok.rawValue)
     }
 
-    func hasAccess(call _: FlutterMethodCall, result: @escaping FlutterResult) {
+    func hasAccess(call: FlutterMethodCall, result: @escaping FlutterResult) {
         let status = CLLocationManager.authorizationStatus()
         result(
             CLLocationManager.locationServicesEnabled()

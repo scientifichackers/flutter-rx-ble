@@ -3,63 +3,54 @@ package com.pycampers.rx_ble
 import com.polidea.rxandroidble2.RxBleClient
 import com.polidea.rxandroidble2.scan.ScanFilter
 import com.polidea.rxandroidble2.scan.ScanSettings
-import com.pycampers.plugin_scaffold.catchErrors
+import com.pycampers.plugin_scaffold.StreamSink
 import com.pycampers.plugin_scaffold.trySend
 import com.pycampers.plugin_scaffold.trySendThrowable
 import dumpScanResult
-import io.flutter.plugin.common.EventChannel.EventSink
-import io.flutter.plugin.common.EventChannel.StreamHandler
 import io.flutter.plugin.common.MethodCall
 import io.flutter.plugin.common.MethodChannel
 import io.reactivex.disposables.Disposable
 
 interface ScanInterface {
     fun stopScan(call: MethodCall, result: MethodChannel.Result)
+    fun scanOnCancel(id: Int, args: Any?)
+    fun scanOnListen(id: Int, args: Any?, sink: StreamSink)
 }
 
-class ScanMethods(val bleClient: RxBleClient) : ScanInterface, StreamHandler {
+class ScanMethods(val bleClient: RxBleClient) : ScanInterface {
     var disposable: Disposable? = null
-    var eventSink: EventSink? = null
 
     fun stopScan() {
         disposable?.dispose()
         disposable = null
-        eventSink?.endOfStream()
-        eventSink = null
     }
 
-    fun startScan(scanSettings: ScanSettings, scanFilter: ScanFilter, eventSink: EventSink) {
+    override fun scanOnListen(id: Int, args: Any?, sink: StreamSink) {
+        val map = args as Map<*, *>
+        val scanSettings = ScanSettings.Builder().setScanMode(map["scanMode"] as Int - 1).build()
+
+        val filter = ScanFilter.Builder()
+        map["deviceId"]?.let { filter.setDeviceAddress(it as String) }
+        map["name"]?.let { filter.setDeviceName(it as String) }
+
         stopScan()
 
-        disposable = bleClient.scanBleDevices(scanSettings, scanFilter)
-            .doFinally { catchErrors(eventSink) { eventSink.endOfStream() } }
+        disposable = bleClient.scanBleDevices(scanSettings, filter.build())
+            .doFinally { sink.endOfStream() }
             .subscribe(
                 {
-                    trySend(eventSink) {
+                    trySend(sink) {
                         val device = it.bleDevice
                         val state = getDeviceState(device.macAddress)
                         state.bleDevice = device
                         dumpScanResult(it)
                     }
                 },
-                {
-                    trySendThrowable(eventSink, it)
-                }
+                { trySendThrowable(sink, it) }
             )
-
-        this.eventSink = eventSink
     }
 
-    override fun onListen(args: Any?, eventSink: EventSink) {
-        val map = args as Map<*, *>
-        val scanSettings = ScanSettings.Builder().setScanMode(map["scanMode"] as Int - 1).build()
-        val filter = ScanFilter.Builder()
-        (map["deviceId"] as String?)?.let { filter.setDeviceAddress(it) }
-        (map["name"] as String?)?.let { filter.setDeviceName(it) }
-        startScan(scanSettings, filter.build(), eventSink)
-    }
-
-    override fun onCancel(args: Any?) {
+    override fun scanOnCancel(id: Int, args: Any?) {
         stopScan()
     }
 

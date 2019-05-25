@@ -9,8 +9,14 @@ let pkgName = "com.pycampers.rx_ble"
 class DeviceState {
     var connectDisposable: Disposable?
     var stateDisposable: Disposable?
-    var eventSink: FlutterEventSink?
     var peripheral: Peripheral?
+
+    func disconnect() {
+        connectDisposable?.dispose()
+        connectDisposable = nil
+        stateDisposable?.dispose()
+        stateDisposable = nil
+    }
 }
 
 enum Errors: Error {
@@ -35,6 +41,19 @@ func getDeviceState(_ deviceId: String) -> DeviceState {
     return deviceState
 }
 
+var charCache = [String: Characteristic]()
+
+func putCharInCache(_ deviceId: String, _ char: Characteristic) {
+    let key = deviceId + char.uuid.uuidString
+    charCache[key] = char
+}
+
+func getCharFromCache(_ deviceId: String, _ uuid: String) throws -> Characteristic {
+    let key = deviceId + uuid
+    guard let char = charCache[key] else { throw Errors.charNotFound }
+    return char
+}
+
 public class SwiftRxBlePlugin: NSObject, FlutterPlugin {
     public static func register(with registrar: FlutterPluginRegistrar) {
         let messenger = registrar.messenger()
@@ -42,8 +61,8 @@ public class SwiftRxBlePlugin: NSObject, FlutterPlugin {
         let permissionMethods = PermissionMethods(manager)
         let scanMethods = ScanMethods(manager)
         let connectMethods = ConnectMethods()
-        let notifyMethods = NotifyMethods(connectMethods)
-
+        let readWriteMethods = ReadWriteMethods()
+    
         _ = createPluginScaffold(messenger: messenger, channelName: pkgName, methodMap: [
             "requestAccess": permissionMethods.requestAccess,
             "hasAccess": permissionMethods.hasAccess,
@@ -51,16 +70,14 @@ public class SwiftRxBlePlugin: NSObject, FlutterPlugin {
             "disconnect": connectMethods.disconnect,
             "getConnectionState": connectMethods.getConnectionState,
             "discoverChars": connectMethods.discoverChars,
-            "readChar": connectMethods.readChar,
-            "writeChar": connectMethods.writeChar,
-        ], eventMap: [
-            "scan": scanMethods,
-            "connect": connectMethods,
-            "notify": notifyMethods,
+            "readChar": readWriteMethods.readChar,
+            "writeChar": readWriteMethods.writeChar,
+            "scanOnListen": scanMethods.onListen,
+            "scanOnCancel": scanMethods.onCancel,
+            "connectOnListen": connectMethods.onListen,
+            "connectOnCancel": connectMethods.onCancel,
+            "observeCharOnListen": readWriteMethods.onListen,
+            "observeCharOnCancel": readWriteMethods.onCancel
         ])
-    }
-
-    public func handle(_: FlutterMethodCall, result: @escaping FlutterResult) {
-        result("iOS " + UIDevice.current.systemVersion)
     }
 }

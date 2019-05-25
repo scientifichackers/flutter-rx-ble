@@ -8,4 +8,29 @@ A Flutter BLE plugin, based on the wonderful [RxAndroidBle](https://github.com/P
 
 - Acquire every permission and setting required for Bluetooth access, using a _single_ method - `RxBle.requestAccess()`.
 - No need to manually discover BLE services.
-- Automatically queue up GATT requests to avoid race conditions.
+- Automatically queues up GATT requests to avoid race conditions.
+
+
+## Installation
+
+### iOS
+
+1. Open iOS module in XCode
+2. Edit `Info.plist`
+3. Right click > Enable show Raw Keys/Values
+4. Add these entries
+    - `NSLocationWhenInUseUsageDescription` = `Please enable location to continue.`
+    - `NSBluetoothPeripheralUsageDescription` = `Please enable bluetooth to continue.`
+
+Or, you may add these entries maually using your editor of choice:
+
+```plist
+<dict>
+    ...
+
+    <key>NSLocationWhenInUseUsageDescription</key>
+    <string>Please enable location to continue.</string>
+    <key>NSBluetoothPeripheralUsageDescription</key>
+    <string>Please enable bluetooth to continue.</string>
+</dict>
+```

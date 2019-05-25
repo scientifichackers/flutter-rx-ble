@@ -5,7 +5,6 @@ import com.polidea.rxandroidble2.RxBleConnection
 import com.polidea.rxandroidble2.RxBleDevice
 import com.polidea.rxandroidble2.exceptions.BleException
 import com.pycampers.plugin_scaffold.createPluginScaffold
-import io.flutter.plugin.common.EventChannel
 import io.flutter.plugin.common.PluginRegistry.Registrar
 import io.reactivex.disposables.Disposable
 import io.reactivex.exceptions.UndeliverableException
@@ -16,12 +15,23 @@ const val PKG_NAME = "com.pycampers.rx_ble"
 class DeviceState {
     var connectDisposable: Disposable? = null
     var stateDisposable: Disposable? = null
-    var eventSink: EventChannel.EventSink? = null
     var bleDevice: RxBleDevice? = null
     var bleConnection: RxBleConnection? = null
+
+    fun disconnect() {
+        print("disconnecting! ${bleDevice?.macAddress}")
+        connectDisposable?.dispose()
+        connectDisposable = null
+        stateDisposable?.dispose()
+        stateDisposable = null
+    }
 }
 
 val devices = mutableMapOf<String, DeviceState>()
+
+fun getDeviceState(deviceId: String): DeviceState {
+    return devices.getOrPut(deviceId) { DeviceState() }
+}
 
 fun getBleDevice(deviceId: String): RxBleDevice {
     return devices[deviceId]?.bleDevice ?: throw IllegalArgumentException(
@@ -29,10 +39,6 @@ fun getBleDevice(deviceId: String): RxBleDevice {
             "You must call \"startScan()\" and wait for " +
             "device to appear in ScanResults before accessing the device."
     )
-}
-
-fun getDeviceState(deviceId: String): DeviceState {
-    return devices.getOrPut(deviceId) { DeviceState() }
 }
 
 fun getBleConnection(deviceId: String): RxBleConnection {
@@ -43,43 +49,31 @@ fun getBleConnection(deviceId: String): RxBleConnection {
     )
 }
 
-class RxBlePluginCallDispatcher(
-    p: PermissionInterface,
-    c: ConnectInterface,
-    s: ScanInterface
-) : PermissionInterface by p, ConnectInterface by c, ScanInterface by s {
-    init {
-        RxJavaPlugins.setErrorHandler { error ->
-            if (error is UndeliverableException && error.cause is BleException) {
-                // ignore BleExceptions as they were surely delivered at least once
-                return@setErrorHandler
-            }
-            throw error
-        }
-    }
-}
+class RxBlePluginMethods(p: PermissionInterface, c: ConnectInterface, s: ScanInterface, r: ReadWriteInterface) :
+    PermissionInterface by p, ConnectInterface by c, ScanInterface by s, ReadWriteInterface by r
 
 class RxBlePlugin {
     companion object {
         @JvmStatic
         fun registerWith(registrar: Registrar) {
+            RxJavaPlugins.setErrorHandler { error ->
+                if (error is UndeliverableException && error.cause is BleException) {
+                    // ignore BleExceptions as they were surely delivered at least once
+                    return@setErrorHandler
+                }
+                throw error
+            }
+
             val bleClient = RxBleClient.create(registrar.context())!!
 
-            val permissionMethods = PermissionMethods(registrar)
-            val connectMethods = ConnectMethods()
-            val scanMethods = ScanMethods(bleClient)
-            val notifyMethods = NotifyMethods()
-
-            createPluginScaffold(
-                PKG_NAME,
-                registrar.messenger(),
-                RxBlePluginCallDispatcher(permissionMethods, connectMethods, scanMethods),
-                mapOf(
-                    "notify" to notifyMethods,
-                    "connect" to connectMethods,
-                    "scan" to scanMethods
-                )
+            val plugin = RxBlePluginMethods(
+                PermissionMethods(registrar),
+                ConnectMethods(),
+                ScanMethods(bleClient),
+                ReadWriteMethods()
             )
+
+            createPluginScaffold(registrar.messenger(), PKG_NAME, plugin)
         }
     }
 }

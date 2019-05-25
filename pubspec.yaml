@@ -11,7 +11,8 @@ dependencies:
   flutter:
     sdk: flutter
 
-  plugin_scaffold: ^0.0.1
+  plugin_scaffold:
+    path: ../flutter-plugin-scaffold
 
 dev_dependencies:
   flutter_test:
