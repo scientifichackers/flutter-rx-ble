@@ -7,12 +7,30 @@ import plugin_scaffold
 import RxBluetoothKit
 import RxSwift
 
+typealias CharMap = [String: [Characteristic]]
+
 class ConnectMethods: NSObject {
-    func getCharObservable(_ serviceObservable: Observable<[Service]>) -> Observable<Characteristic> {
-        return serviceObservable
+    func getCharObservable(_ peripheral: Peripheral) -> Observable<Characteristic> {
+        return peripheral
+            .discoverServices(nil).asObservable()
             .flatMap { Observable.from($0) }
             .flatMap { $0.discoverCharacteristics(nil) }.asObservable()
             .flatMap { Observable.from($0) }
+    }
+
+    func _discoverChars(_ peripheral: Peripheral, onSuccess: @escaping (CharMap) -> Void, onError: @escaping (Error) -> Void) {
+        var chars = CharMap()
+        _ = getCharObservable(peripheral).subscribe(
+            onNext: {
+                let serviceId = $0.service.uuid.uuidString
+                if chars[serviceId] == nil {
+                    chars[serviceId] = []
+                }
+                chars[serviceId]?.append($0)
+            },
+            onError: { onError($0) },
+            onDisposed: { onSuccess(chars) }
+        )
     }
 
     func onListen(id: Int, args: Any?, sink: @escaping FlutterEventSink) throws {
@@ -22,18 +40,35 @@ class ConnectMethods: NSObject {
         let peripheral = try getPeripheral(deviceId)
 
         state.disconnect()
-
-        let serviceObservable = peripheral.establishConnection().flatMap { $0.discoverServices(nil) }.asObservable()
-        state.connectDisposable = getCharObservable(serviceObservable)
-            .subscribe(
-                onNext: { putCharInCache(deviceId, $0) },
-                onError: { trySendError(sink, $0) },
-                onDisposed: { sink(FlutterEndOfEventStream) }
-            )
-        state.stateDisposable = peripheral.observeConnection().subscribe(
-            onNext: { sink($0 ? 1 : 2) },
+        
+        let stateDisposable = peripheral.observeConnection().subscribe(
+            onNext: {
+                if $0 {
+                    self._discoverChars(
+                        peripheral,
+                        onSuccess: {
+                            for chars in $0.values {
+                                for char in chars {
+                                    charCache[deviceId + char.uuid.uuidString] = char
+                                }
+                            }
+                            sink(1)
+                        },
+                        onError: { trySendError(sink, $0) }
+                    )
+                } else {
+                    sink(2)
+                }
+            },
+            onError: { trySendError(sink, $0) }
+        )
+        
+        state.disposable = peripheral.establishConnection().subscribe(
             onError: { trySendError(sink, $0) },
-            onDisposed: { sink(FlutterEndOfEventStream) }
+            onDisposed: {
+                sink(FlutterEndOfEventStream)
+                stateDisposable.dispose()
+            }
         )
     }
 
@@ -73,23 +108,17 @@ class ConnectMethods: NSObject {
     }
 
     func discoverChars(call: FlutterMethodCall, result: @escaping FlutterResult) throws {
-        var chars = [String: [String]]()
         let deviceId = call.arguments as! String
         let peripheral = try getPeripheral(deviceId)
-        let serviceObservable = peripheral.discoverServices(nil).asObservable()
 
-        _ = getCharObservable(serviceObservable)
-            .subscribe(
-                onNext: {
-                    let serviceId = $0.service.uuid.uuidString
-                    let charId = $0.uuid.uuidString
-                    if chars[serviceId] == nil {
-                        chars[serviceId] = []
-                    }
-                    chars[serviceId]?.append(charId)
-                },
-                onError: { trySendError(result, $0) },
-                onDisposed: { trySend(result) { chars } }
-            )
+        _discoverChars(
+            peripheral,
+            onSuccess: {
+                chars in trySend(result) {
+                    chars.mapValues { $0.map { $0.uuid.uuidString } }
+                }
+            },
+            onError: { trySendError(result, $0) }
+        )
     }
 }

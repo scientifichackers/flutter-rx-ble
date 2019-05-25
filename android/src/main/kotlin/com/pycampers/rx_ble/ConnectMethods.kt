@@ -21,15 +21,19 @@ class ConnectMethods : ConnectInterface {
         val state = getDeviceState(deviceId)
 
         state.disconnect()
-        state.connectDisposable = device.establishConnection(waitForDevice)
-            .doFinally { sink.endOfStream() }
+
+        val stateDisposable = device.observeConnectionStateChanges()
+            .subscribe { sink.success(it.ordinal) }
+
+        state.disposable = device.establishConnection(waitForDevice)
+            .doFinally {
+                sink.endOfStream()
+                stateDisposable.dispose()
+            }
             .subscribe(
                 { state.bleConnection = it },
                 { trySendThrowable(sink, it) }
             )
-        state.stateDisposable = device.observeConnectionStateChanges()
-            .doFinally { sink.endOfStream() }
-            .subscribe { sink.success(it.ordinal) }
     }
 
     override fun connectOnCancel(id: Int, args: Any?) {

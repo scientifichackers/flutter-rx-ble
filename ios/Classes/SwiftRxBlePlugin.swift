@@ -7,15 +7,12 @@ import UIKit
 let pkgName = "com.pycampers.rx_ble"
 
 class DeviceState {
-    var connectDisposable: Disposable?
-    var stateDisposable: Disposable?
+    var disposable: Disposable?
     var peripheral: Peripheral?
 
     func disconnect() {
-        connectDisposable?.dispose()
-        connectDisposable = nil
-        stateDisposable?.dispose()
-        stateDisposable = nil
+        disposable?.dispose()
+        disposable = nil
     }
 }
 

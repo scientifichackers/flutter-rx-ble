@@ -13,17 +13,14 @@ import io.reactivex.plugins.RxJavaPlugins
 const val PKG_NAME = "com.pycampers.rx_ble"
 
 class DeviceState {
-    var connectDisposable: Disposable? = null
-    var stateDisposable: Disposable? = null
+    var disposable: Disposable? = null
     var bleDevice: RxBleDevice? = null
     var bleConnection: RxBleConnection? = null
 
     fun disconnect() {
         print("disconnecting! ${bleDevice?.macAddress}")
-        connectDisposable?.dispose()
-        connectDisposable = null
-        stateDisposable?.dispose()
-        stateDisposable = null
+        disposable?.dispose()
+        disposable = null
     }
 }
 
