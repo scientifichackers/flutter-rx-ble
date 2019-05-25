@@ -1,3 +1,5 @@
+import 'dart:io';
+
 import 'package:flutter/services.dart';
 import 'package:rx_ble/src/exceptions.dart';
 
@@ -8,9 +10,14 @@ final exceptionRegex = RegExp(
 void rethrowException(e) {
   if (e is! PlatformException) throw e;
 
-  final code = exceptionRegex.firstMatch(e.code)?.group(2);
   final message = e.message;
   final details = e.details;
+
+  if (Platform.isIOS) {
+    throw BleException(message, details);
+  }
+
+  final code = exceptionRegex.firstMatch(e.code)?.group(2);
 
   switch (code) {
     case "BleDisconnectedException":
