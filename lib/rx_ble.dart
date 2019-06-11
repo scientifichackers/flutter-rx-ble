@@ -199,8 +199,8 @@ class RxBle {
           yield state;
         }
       } on BleDisconnectedException {
-        if (!autoConnect) rethrow;
         yield BleConnectionState.disconnected;
+        if (!autoConnect) rethrow;
         continue;
       }
 
