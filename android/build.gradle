@@ -43,5 +43,5 @@ dependencies {
     implementation "org.jetbrains.kotlin:kotlin-stdlib-jdk7:$kotlin_version"
     implementation project(path: ':plugin_scaffold')
     implementation "com.google.android.gms:play-services-location:16.0.0"
-    implementation "com.polidea.rxandroidble2:rxandroidble:1.9.1"
+    implementation "com.polidea.rxandroidble2:rxandroidble:1.10.1"
 }
