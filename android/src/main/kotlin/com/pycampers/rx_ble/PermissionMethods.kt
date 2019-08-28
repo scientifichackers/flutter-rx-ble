@@ -7,10 +7,13 @@ import android.bluetooth.BluetoothManager
 import android.content.Context
 import android.content.Intent
 import android.content.pm.PackageManager
+import android.location.LocationManager
 import android.net.Uri
 import android.os.Build
 import android.provider.Settings
 import androidx.annotation.RequiresApi
+import com.google.android.gms.common.ConnectionResult
+import com.google.android.gms.common.GoogleApiAvailability
 import com.google.android.gms.common.api.ApiException
 import com.google.android.gms.common.api.ResolvableApiException
 import com.google.android.gms.location.LocationRequest
@@ -34,7 +37,13 @@ const val REQUEST_PERM_LOC = 3
 const val LOC_PERM = Manifest.permission.ACCESS_COARSE_LOCATION
 
 enum class AccessStatus {
-    OK, BT_DISABLED, LOC_DISABLED, LOC_DENIED, LOC_DENIED_NEVER_ASK_AGAIN, LOC_DENIED_SHOW_PERM_RATIONALE,
+    OK,
+    BT_DISABLED,
+    LOC_DISABLED,
+    LOC_DENIED,
+    LOC_DENIED_NEVER_ASK_AGAIN,
+    BLUETOOTH_NOT_AVAILABLE,
+    LOC_DENIED_SHOW_PERM_RATIONALE,
 }
 
 interface PermissionInterface {
@@ -73,6 +82,12 @@ class PermissionMethods(val registrar: PluginRegistry.Registrar) : ActivityResul
         locPermReqQ.add(result)
     }
 
+    fun isGooglePlayServicesAvailable(): Boolean {
+        return GoogleApiAvailability
+            .getInstance()
+            .isGooglePlayServicesAvailable(context) == ConnectionResult.SUCCESS
+    }
+
     fun requestLocPerm(result: Result) {
         if (hasLocPerm()) {
             return result.success(AccessStatus.OK.ordinal)
@@ -84,7 +99,25 @@ class PermissionMethods(val registrar: PluginRegistry.Registrar) : ActivityResul
         }
     }
 
-    fun isLocEnabled(callback: (Boolean, e: ResolvableApiException?) -> Unit) {
+    fun isLocEnabled(result: Result, callback: (Boolean, (() -> Unit)?) -> Unit) {
+        if (!isGooglePlayServicesAvailable()) {
+            val enabled = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.P) {
+                val manager: LocationManager =
+                    context.getSystemService(Context.LOCATION_SERVICE) as LocationManager
+                manager.isLocationEnabled
+            } else {
+                Settings.Secure.getInt(
+                    activity.getContentResolver(), Settings.Secure.LOCATION_MODE
+                ) != Settings.Secure.LOCATION_MODE_OFF
+            }
+
+            callback(enabled) {
+                activity.startActivity(Intent(Settings.ACTION_LOCATION_SOURCE_SETTINGS))
+                result.success(AccessStatus.LOC_DISABLED.ordinal)
+            }
+            return
+        }
+
         val request = LocationSettingsRequest.Builder()
             .addLocationRequest(LocationRequest())
             .setAlwaysShow(true)
@@ -99,7 +132,11 @@ class PermissionMethods(val registrar: PluginRegistry.Registrar) : ActivityResul
             } catch (e: ApiException) {
                 when (e.statusCode) {
                     LocationSettingsStatusCodes.RESOLUTION_REQUIRED -> {
-                        callback(false, e as ResolvableApiException)
+                        callback(false) {
+                            val resolvable = e as ResolvableApiException
+                            resolvable.startResolutionForResult(activity, REQUEST_ENABLE_LOC)
+                            locEnableReqQ.add(result)
+                        }
                         return@addOnCompleteListener
                     }
                     else -> null
@@ -111,15 +148,14 @@ class PermissionMethods(val registrar: PluginRegistry.Registrar) : ActivityResul
     }
 
     fun requestLocEnable(result: Result) {
-        isLocEnabled { enabled, resolvable ->
+        isLocEnabled(result) { enabled, requestEnable ->
             catchErrors(result) {
                 when {
                     enabled -> {
                         requestLocPerm(result)
                     }
-                    resolvable != null -> {
-                        resolvable.startResolutionForResult(activity, REQUEST_ENABLE_LOC)
-                        locEnableReqQ.add(result)
+                    requestEnable != null -> {
+                        requestEnable()
                     }
                     else -> {
                         result.success(AccessStatus.LOC_DISABLED.ordinal)
@@ -220,10 +256,17 @@ class PermissionMethods(val registrar: PluginRegistry.Registrar) : ActivityResul
         return true
     }
 
+    fun isBluetoothAvailable(): Boolean {
+        val bluetoothAdapter = BluetoothAdapter.getDefaultAdapter()
+        return bluetoothAdapter != null
+    }
+
     fun isBluetoothEnabled(): Boolean {
         val value by lazy(LazyThreadSafetyMode.NONE) {
-            val bluetoothManager = context.getSystemService(Context.BLUETOOTH_SERVICE) as? BluetoothManager
-            bluetoothManager?.adapter ?: throw RuntimeException("couldn't acquire an instance of BluetoothAdapter")
+            val bluetoothManager =
+                context.getSystemService(Context.BLUETOOTH_SERVICE) as? BluetoothManager
+            bluetoothManager?.adapter
+                ?: throw RuntimeException("couldn't acquire an instance of BluetoothAdapter")
         }
         return value.isEnabled
     }
@@ -236,7 +279,10 @@ class PermissionMethods(val registrar: PluginRegistry.Registrar) : ActivityResul
     }
 
     override fun hasAccess(call: MethodCall, result: Result) {
-        isLocEnabled { enabled, _ ->
+        if (!isBluetoothAvailable()) {
+            result.success(false)
+        }
+        isLocEnabled(result) { enabled, _ ->
             trySend(result) {
                 isBluetoothEnabled() && enabled && hasLocPerm()
             }
@@ -244,6 +290,9 @@ class PermissionMethods(val registrar: PluginRegistry.Registrar) : ActivityResul
     }
 
     override fun requestAccess(call: MethodCall, result: Result) {
+        if (!isBluetoothAvailable()) {
+            result.success(AccessStatus.BLUETOOTH_NOT_AVAILABLE.ordinal)
+        }
         if (isBluetoothEnabled()) {
             return requestLocEnable(result)
         }

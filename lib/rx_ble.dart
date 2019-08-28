@@ -81,12 +81,15 @@ class RxBle {
     AccessStatus status;
 
     index = await invokeMethod("requestAccess");
+
     try {
       status = AccessStatus.values[index];
     } on RangeError {
+      // app should show location permission rationale to user
       if (!(await showRationale?.call() ?? true)) {
         return AccessStatus.locationDenied;
       }
+
       index = await invokeMethod("requestLocPerm");
       status = AccessStatus.values[index];
     }

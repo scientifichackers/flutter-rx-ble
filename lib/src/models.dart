@@ -21,7 +21,10 @@ enum AccessStatus {
   ///
   /// You may use the utility method [RxBle.openAppSettings]
   /// to open the settings page programmatically.
-  locationDeniedNeverAskAgain
+  locationDeniedNeverAskAgain,
+
+  /// Bluetooth is not available on this device
+  bluetoothNotAvailable
 }
 
 enum ScanModes {
