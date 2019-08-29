@@ -1,5 +1,6 @@
 package com.pycampers.rx_ble
 
+import android.os.ParcelUuid;
 import com.polidea.rxandroidble2.RxBleClient
 import com.polidea.rxandroidble2.scan.ScanFilter
 import com.polidea.rxandroidble2.scan.ScanSettings
@@ -32,6 +33,7 @@ class ScanMethods(val bleClient: RxBleClient) : ScanInterface {
         val filter = ScanFilter.Builder()
         map["deviceId"]?.let { filter.setDeviceAddress(it as String) }
         map["name"]?.let { filter.setDeviceName(it as String) }
+        map["service"]?.let { filter.setServiceUuid(ParcelUuid.fromString(it as String)) }
 
         stopScan()
 
