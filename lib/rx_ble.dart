@@ -109,11 +109,13 @@ class RxBle {
     ScanModes scanMode: ScanModes.lowPower,
     String deviceName,
     String deviceId,
+    String service,
   }) {
     return PluginScaffold.createStream(channel, "scan", {
       "scanMode": scanMode.index,
       "deviceName": deviceName,
       "deviceId": deviceId,
+      "service": service,
     }).map((event) {
       return ScanResult.fromJson(event);
     }).handleError((e) {

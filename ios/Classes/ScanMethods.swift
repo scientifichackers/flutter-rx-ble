@@ -4,6 +4,7 @@
 
 import Foundation
 import plugin_scaffold
+import CoreBluetooth
 import RxBluetoothKit
 import RxSwift
 
@@ -25,10 +26,13 @@ class ScanMethods: NSObject {
         let map = args as! [String: Any?]
         let deviceIdFilter = map["deviceId"] as? String
         let deviceNameFilter = map["deviceName"] as? String
+        let serviceFilter = map["service"] as? String
+        let services: [CBUUID]? =
+            serviceFilter != nil ? [CBUUID(string: map["service"] as! String)] : nil
 
         _stopScan()
 
-        disposable = manager.scanForPeripherals(withServices: nil).subscribe(
+        disposable = manager.scanForPeripherals(withServices: services).subscribe(
             onNext: {
                 let peripheral = $0.peripheral
                 let deviceName = peripheral.name
