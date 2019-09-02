@@ -40,7 +40,7 @@ class ReadWriteMethods: NSObject {
         let peripheral = try getPeripheral(deviceId)
         let char = try getCharFromCache(deviceId, uuid)
         
-        sendSingle(peripheral.writeValue(value.data, for: char, type: .withoutResponse, canSendWriteWithoutResponseCheckEnabled: false), result) {
+        sendSingle(peripheral.writeValue(value.data, for: char, type: .withoutResponse, canSendWriteWithoutResponseCheckEnabled: true), result) {
             FlutterStandardTypedData(bytes: $0.value ?? Data())
         }
     }
