@@ -34,3 +34,26 @@ Or, you may add these entries maually using your editor of choice:
     <string>Please enable bluetooth to continue.</string>
 </dict>
 ```
+
+## Using
+
+### Searching for nearby devices
+
+```dart
+Map<String, ScanResult> results = <String, ScanResult>{};
+
+Stream scanStream = RxBle.startScan();
+StreamSubscription scanSubscription;
+
+scanSubscription = scanStream.listen((scanResult) async {
+    if (scanResult.deviceName != null) {
+        results[scanResult.deviceName] = scanResult;
+        print(scanResult.deviceName);
+    }
+});
+
+await Future.delayed(Duration(seconds: 5));
+await RxBle.stopScan();
+await scanSubscription.cancel();
+print(results);
+```
