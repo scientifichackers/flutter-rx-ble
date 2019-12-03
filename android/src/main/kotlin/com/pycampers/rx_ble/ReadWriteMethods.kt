@@ -1,6 +1,6 @@
 package com.pycampers.rx_ble
 
-import com.pycampers.plugin_scaffold.StreamSink
+import com.pycampers.plugin_scaffold.MainThreadStreamSink
 import com.pycampers.plugin_scaffold.trySend
 import com.pycampers.plugin_scaffold.trySendThrowable
 import io.flutter.plugin.common.MethodCall
@@ -14,7 +14,7 @@ interface ReadWriteInterface {
     fun readChar(call: MethodCall, result: Result)
     fun writeChar(call: MethodCall, result: Result)
     fun requestMtu(call: MethodCall, result: Result)
-    fun observeCharOnListen(id: Int, args: Any?, sink: StreamSink)
+    fun observeCharOnListen(id: Int, args: Any?, sink: MainThreadStreamSink)
     fun observeCharOnCancel(id: Int, args: Any?)
 }
 
@@ -73,7 +73,7 @@ class ReadWriteMethods : ReadWriteInterface {
         sendSingle(connection.requestMtu(value), result)
     }
 
-    override fun observeCharOnListen(id: Int, args: Any?, sink: StreamSink) {
+    override fun observeCharOnListen(id: Int, args: Any?, sink: MainThreadStreamSink) {
         val map = args as Map<*, *>
         val deviceId = map["deviceId"] as String
         val uuid = UUID.fromString(map["uuid"] as String)

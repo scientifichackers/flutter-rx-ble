@@ -4,7 +4,7 @@ import android.os.ParcelUuid;
 import com.polidea.rxandroidble2.RxBleClient
 import com.polidea.rxandroidble2.scan.ScanFilter
 import com.polidea.rxandroidble2.scan.ScanSettings
-import com.pycampers.plugin_scaffold.StreamSink
+import com.pycampers.plugin_scaffold.MainThreadStreamSink
 import com.pycampers.plugin_scaffold.trySend
 import com.pycampers.plugin_scaffold.trySendThrowable
 import dumpScanResult
@@ -15,7 +15,7 @@ import io.reactivex.disposables.Disposable
 interface ScanInterface {
     fun stopScan(call: MethodCall, result: MethodChannel.Result)
     fun scanOnCancel(id: Int, args: Any?)
-    fun scanOnListen(id: Int, args: Any?, sink: StreamSink)
+    fun scanOnListen(id: Int, args: Any?, sink: MainThreadStreamSink)
 }
 
 class ScanMethods(val bleClient: RxBleClient) : ScanInterface {
@@ -26,7 +26,7 @@ class ScanMethods(val bleClient: RxBleClient) : ScanInterface {
         disposable = null
     }
 
-    override fun scanOnListen(id: Int, args: Any?, sink: StreamSink) {
+    override fun scanOnListen(id: Int, args: Any?, sink: MainThreadStreamSink) {
         val map = args as Map<*, *>
         val scanSettings = ScanSettings.Builder().setScanMode(map["scanMode"] as Int - 1).build()
 

@@ -1,6 +1,6 @@
 package com.pycampers.rx_ble
 
-import com.pycampers.plugin_scaffold.StreamSink
+import com.pycampers.plugin_scaffold.MainThreadStreamSink
 import com.pycampers.plugin_scaffold.trySendThrowable
 import io.flutter.plugin.common.MethodCall
 import io.flutter.plugin.common.MethodChannel.Result
@@ -9,11 +9,11 @@ interface ConnectInterface {
     fun disconnect(call: MethodCall, result: Result)
     fun getConnectionState(call: MethodCall, result: Result)
     fun connectOnCancel(id: Int, args: Any?)
-    fun connectOnListen(id: Int, args: Any?, sink: StreamSink)
+    fun connectOnListen(id: Int, args: Any?, sink: MainThreadStreamSink)
 }
 
 class ConnectMethods : ConnectInterface {
-    override fun connectOnListen(id: Int, args: Any?, sink: StreamSink) {
+    override fun connectOnListen(id: Int, args: Any?, sink: MainThreadStreamSink) {
         val map = args as Map<*, *>
         val deviceId = map["deviceId"] as String
         val waitForDevice = map["waitForDevice"] as Boolean
