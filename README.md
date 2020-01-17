@@ -21,6 +21,7 @@ A Flutter BLE plugin, based on the wonderful [RxAndroidBle](https://github.com/P
 4. Add these entries
     - `NSLocationWhenInUseUsageDescription` = `Please enable location to continue.`
     - `NSBluetoothPeripheralUsageDescription` = `Please enable bluetooth to continue.`
+    - `NSBluetoothAlwaysUsageDescription` = `Please enable bluetooth to continue.`
 
 Or, you may add these entries maually using your editor of choice:
 
@@ -31,6 +32,8 @@ Or, you may add these entries maually using your editor of choice:
     <key>NSLocationWhenInUseUsageDescription</key>
     <string>Please enable location to continue.</string>
     <key>NSBluetoothPeripheralUsageDescription</key>
+    <string>Please enable bluetooth to continue.</string>
+    <key>NSBluetoothAlwaysUsageDescription</key>
     <string>Please enable bluetooth to continue.</string>
 </dict>
 ```
