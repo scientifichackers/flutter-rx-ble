@@ -34,7 +34,7 @@ import java.util.NoSuchElementException
 const val REQUEST_ENABLE_BT = 1
 const val REQUEST_ENABLE_LOC = 2
 const val REQUEST_PERM_LOC = 3
-const val LOC_PERM = Manifest.permission.ACCESS_COARSE_LOCATION
+const val LOC_PERM = Manifest.permission.ACCESS_FINE_LOCATION
 
 enum class AccessStatus {
     OK,
