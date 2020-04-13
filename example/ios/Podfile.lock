@@ -1,0 +1,40 @@
+PODS:
+  - Flutter (1.0.0)
+  - plugin_scaffold (0.0.1):
+    - Flutter
+  - rx_ble (0.0.1):
+    - Flutter
+    - plugin_scaffold
+    - RxBluetoothKit
+  - RxBluetoothKit (5.3.0):
+    - RxSwift (~> 5.0)
+  - RxSwift (5.1.1)
+
+DEPENDENCIES:
+  - Flutter (from `Flutter`)
+  - plugin_scaffold (from `.symlinks/plugins/plugin_scaffold/ios`)
+  - rx_ble (from `.symlinks/plugins/rx_ble/ios`)
+
+SPEC REPOS:
+  trunk:
+    - RxBluetoothKit
+    - RxSwift
+
+EXTERNAL SOURCES:
+  Flutter:
+    :path: Flutter
+  plugin_scaffold:
+    :path: ".symlinks/plugins/plugin_scaffold/ios"
+  rx_ble:
+    :path: ".symlinks/plugins/rx_ble/ios"
+
+SPEC CHECKSUMS:
+  Flutter: 0e3d915762c693b495b44d77113d4970485de6ec
+  plugin_scaffold: e7c52bc1cfb6e672959f798dfc9dea8dff55daeb
+  rx_ble: c1eb4ff06f835004dc7cbbb10a7130d9c74be917
+  RxBluetoothKit: 0e781978e8a0df70ac3c611dcf44800b76c69f8a
+  RxSwift: 81470a2074fa8780320ea5fe4102807cb7118178
+
+PODFILE CHECKSUM: 1b66dae606f75376c5f2135a8290850eeb09ae83
+
+COCOAPODS: 1.8.4
