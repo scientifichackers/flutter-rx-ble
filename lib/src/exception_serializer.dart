@@ -14,6 +14,9 @@ void rethrowException(e) {
   final details = e.details;
 
   if (Platform.isIOS) {
+    if(message.toString().contains("RxBluetoothKit.BluetoothError error 4")){
+      throw BleDisconnectedException(message, details);
+    }
     throw BleException(message, details);
   }
 
