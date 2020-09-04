@@ -32,7 +32,7 @@ class ScanMethods: NSObject {
 
         _stopScan()
 
-        disposable = manager.scanForPeripherals(withServices: services).subscribe(
+        disposable = manager.scanForPeripherals(withServices: services,options: [CBCentralManagerScanOptionAllowDuplicatesKey : true]).subscribe(
             onNext: {
                 let peripheral = $0.peripheral
                 let deviceName = peripheral.name
